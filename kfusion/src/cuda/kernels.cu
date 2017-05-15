@@ -9,6 +9,7 @@
 
  */
 
+
 #ifdef __APPLE__
 	#include <mach/clock.h>
 	#include <mach/mach.h>
@@ -40,7 +41,9 @@
 #endif
 
 
-
+float **ScaledDepth = NULL;
+struct TrackData;
+TrackData *trackingResult = NULL;
 bool print_kernel_timing = false;
 
 #ifdef __APPLE__
@@ -329,7 +332,7 @@ __global__ void trackKernel(Image<TrackData> output,
 		const Image<float3> inVertex, const Image<float3> inNormal,
 		const Image<float3> refVertex, const Image<float3> refNormal,
 		const Matrix4 Ttrack, const Matrix4 view, const float dist_threshold,
-		const float normal_threshold) {
+		const float normal_threshold, float *ref) {
 	const uint2 pixel = thr2pos2();
 	if (pixel.x >= inVertex.size.x || pixel.y >= inVertex.size.y)
 		return;
@@ -813,7 +816,7 @@ const Matrix4 projectReference = getCameraMatrix(k)
 for (int level = iterations.size() - 1; level >= 0; --level) {
 	for (int i = 0; i < iterations[level]; ++i) {
 		TICK("track");
-		trackKernel<<<grids[level], imageBlock>>>( reduction, inputVertex[level], inputNormal[level], vertex, normal, Matrix4( & pose ), projectReference, dist_threshold, normal_threshold);
+		trackKernel<<<grids[level], imageBlock>>>( reduction, inputVertex[level], inputNormal[level], vertex, normal, Matrix4( & pose ), projectReference, dist_threshold, normal_threshold, NULL);
 		TOCK();
 		TICK("reduce");
 		reduceKernel<<<8, 112>>>( output.getDeviceImage().data(), reduction, inputVertex[level].size ); // compute the linear system to solve

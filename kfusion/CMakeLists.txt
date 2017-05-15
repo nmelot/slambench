@@ -9,6 +9,7 @@ find_package(GLUT   )
 find_package(OpenGL )
 find_package(OpenNI2)
 find_package(PAPI)
+find_package(Drake REQUIRED)
 
 find_package(PkgConfig)
 find_package(Qt5Core)
@@ -17,8 +18,7 @@ find_package(Qt5Gui)
 find_package(Qt5OpenGL)
 find_package(Qt5PrintSupport)
 
-include_directories(./include ${TOON_INCLUDE_PATH} ./thirdparty)
-
+include_directories(./include ${TOON_INCLUDE_PATH} ./thirdparty ${DRAKE_INCLUDE_PATH})
 
 if (CUDA_FOUND) 
  SET( CUDA_PROPAGATE_HOST_FLAGS OFF )
@@ -28,7 +28,7 @@ endif(CUDA_FOUND)
 if(APPLE)
     set(common_libraries     stdc++ pthread)
 else(APPLE)
-    set(common_libraries     rt stdc++ pthread)
+    set(common_libraries     rt stdc++ pthread ${DRAKE_LIBRARIES})
 endif(APPLE)
 
 
@@ -75,6 +75,14 @@ set(kfusion_cuda_srcs
 endif(CUDA_FOUND)
 
 #  ----------------- thirdparty ----------------- 
+
+# ----------- Drake version ------
+if (DRAKE_FOUND)
+	include_directories(${DRAKE_INCLUDE_DIRS})
+    add_library(${appname}-drake  src/drake/wrapper.cpp)
+    target_link_libraries(${appname}-drake   ${common_libraries} ${DRAKE_LIBRARIES})	
+    add_version(${appname} drake "" "")
+endif(DRAKE_FOUND)
 
 add_subdirectory( thirdparty    )
 

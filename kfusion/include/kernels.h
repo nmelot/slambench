@@ -15,6 +15,12 @@
 
 ////////////////////////// COMPUTATION KERNELS PROTOTYPES //////////////////////
 
+extern float *gaussian;
+extern float **ScaledDepth;
+extern float3 **inputVertex;
+extern float3 **inputNormal;
+extern TrackData *trackingResult;
+
 void initVolumeKernel(Volume volume);
 
 void bilateralFilterKernel(float* out, const float* in, uint2 inSize,

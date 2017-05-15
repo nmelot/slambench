@@ -28,6 +28,12 @@ cl_mem ocl_volume_data = NULL;
 cl_mem ocl_depth_buffer = NULL;
 cl_mem ocl_output_render_buffer = NULL; // Common buffer for rendering track, depth and volume
 
+float *gaussian = NULL;
+float **ScaledDepth = NULL;
+float3 **inputVertex = NULL;
+float3 **inputNormal = NULL;
+struct TrackData;
+TrackData *trackingResult = NULL;
 
 // intra-frame
 cl_mem ocl_reduce_output_buffer = NULL;
