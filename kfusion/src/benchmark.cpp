@@ -80,6 +80,32 @@ void matrix4ToFloat16(float out[16], const Matrix4 &in)
 	out[15] = in.data[3].w;
 }
 
+static size_t
+skip(size_t base, size_t ss, size_t aa)
+{
+	size_t kk = 4;
+	/*
+	float a = powf(k, (int)i * -1);
+	float b = powf(k, (int)i) - 1;
+	float c = a * b;
+	float d = c * base;
+	float e = d / (k - 1);
+
+	return e;
+	*/
+	// n * (k^a - 1) * k^(1 - (s + 1)) / (k - 1);
+	ptrdiff_t a = pow(kk, aa);
+	ptrdiff_t b = a - 1;
+	ptrdiff_t c = base * b;
+	ptrdiff_t e = 1 - ss;
+	float f = pow(kk, e);
+	float g = c * f;
+	ptrdiff_t h = kk - 1;
+	ptrdiff_t i = g / h;
+	return i;
+	//return base * (pow(kk, aa - 1) - 1) * pow(kk, 1 - ss) / (kk - 1);
+}
+
 int main(int argc, char ** argv) {
 
 	Configuration config(argc, argv);
@@ -181,28 +207,27 @@ int main(int argc, char ** argv) {
 	drake_init.dist_threshold = 0.1f;
 	drake_init.normal_threshold = 0.8f;
 	matrix4ToFloat16(drake_init.pose, kfusion.getPose());
+	drake_init.iteration_size = config.pyramid.size();
 	drake_init.iteration = (unsigned int*)malloc(sizeof(int) * drake_init.iteration_size);
 	size_t buffer_size = 0;
-	drake_init.iteration_size = config.pyramid.size();
-	//drake_init.iteration_size = 1; // TODO: remove
 	for(std::vector<int>::iterator i = config.pyramid.begin(); i != config.pyramid.end(); i++)
 	{
 		size_t ii = std::distance(config.pyramid.begin(), i);
-		debug(ii);
-		debug(*i);
 		drake_init.iteration[ii] = *i;
-		//drake_init.iteration[ii] = 1; // TODO: remove
-		debug(drake_init.iteration[ii]);
 		buffer_size += *i;
 	}
-	drake_init.pose[0] = init_pose.x;
-	drake_init.pose[1] = init_pose.y;
-	drake_init.pose[2] = init_pose.z;
+	//drake_init.pose[0] = init_pose.x;
+	//drake_init.pose[1] = init_pose.y;
+	//drake_init.pose[2] = init_pose.z;
 	drake_init.vertex = (float*)calloc(computationSize.x * computationSize.y, sizeof(float));
 	drake_init.normal = (float*)calloc(computationSize.x * computationSize.y, sizeof(float));
 	drake_init.track_data = (float*)calloc(computationSize.x * computationSize.y, sizeof(TrackData));
 	drake_init.out = (float*)malloc(sizeof(float) * (computationSize.x * computationSize.y) * ((pow(4, drake_init.iteration_size) - 1) / drake_init.iteration_size - 1) * 8 * buffer_size);
-	memcpy(&drake_init.camera, &camera, sizeof(float) * 4);
+	drake_init.camera[0] = camera.x;
+	drake_init.camera[1] = camera.y;
+	drake_init.camera[2] = camera.z;
+	drake_init.camera[3] = camera.w;
+	drake_init.icp_threshold = config.icp_threshold;
 	
 	drake_platform_stream_init(stream, &drake_init);
 	drake_platform_stream_run(stream);
@@ -222,7 +247,6 @@ int main(int argc, char ** argv) {
 		bool tracked = kfusion.tracking(camera, config.icp_threshold,
 				config.tracking_rate, frame);
 
-/*
 		timings[3] = tock();
 
 		bool integrated = kfusion.integration(camera, config.integration_rate,
@@ -231,6 +255,7 @@ int main(int argc, char ** argv) {
 		timings[4] = tock();
 
 		bool raycast = kfusion.raycasting(camera, config.mu, frame);
+/*
 
 		timings[5] = tock();
 
@@ -258,42 +283,61 @@ int main(int argc, char ** argv) {
 
 		timings[0] = tock();
 
-	size_t skip = 0;
-	for(size_t i = 0; i < drake_init.iteration_size; i++)
+#if 0
+	size_t drake_skip = 0;
+	for(ptrdiff_t i = drake_init.iteration_size - 1; i >= 0; i--)
 	{
-		//size_t i_skip = i == 0 ? 0 : (drake_init.compSize_x * drake_init.compSize_y) * (pow(4, i) - 1) / (pow(4, i) - pow(4, i - 1));
 		for(size_t j = 0; j < drake_init.iteration[i]; j++)
 		{
 			size_t slambench_skip = 0;
-			size_t size_x = drake_init.compSize_x / pow(2, i);
-			for (size_t y = 0; y < drake_init.compSize_y / pow(2, i); y++)
+			size_t size_x = drake_init.compSize_x / pow(2, drake_init.iteration_size - i - 1);
+			size_t size_y = drake_init.compSize_y / pow(2, drake_init.iteration_size - i - 1);
+			for (size_t y = 0; y < size_y; y++)
 			{
 				for (size_t x = 0; x < size_x; x++)
 				{
-					if(((x == 0 && y == 0 && i == drake_init.iteration_size - 1 && j == drake_init.iteration[i] - 1) || 0) && 1)
+					if(i == 0 && j == drake_init.iteration[i] - 1)
 					{
-						debug(skip);
+						/*
 						if(
-							trackingResult[slambench_skip].result != (int)drake_init.out[8 * (skip)] ||
-							trackingResult[slambench_skip].error != drake_init.out[8 * (skip) + 1] ||
-							trackingResult[slambench_skip].J[0] != drake_init.out[8 * (skip) + 2] ||
-							trackingResult[slambench_skip].J[1] != drake_init.out[8 * (skip) + 3] ||
-							trackingResult[slambench_skip].J[2] != drake_init.out[8 * (skip) + 4] ||
-							trackingResult[slambench_skip].J[3] != drake_init.out[8 * (skip) + 5] ||
-							trackingResult[slambench_skip].J[4] != drake_init.out[8 * (skip) + 6] ||
-							trackingResult[slambench_skip].J[5] != drake_init.out[8 * (skip) + 7]
+							inputNormal[i][x + y * size_x].x != drake_init.out[3 * (skip(drake_init.compSize_x * drake_init.compSize_y, drake_init.iteration_size, drake_init.iteration_size - i - 1) + x + y * size_x) + 0] ||
+							inputNormal[i][x + y * size_x].y != drake_init.out[3 * (skip(drake_init.compSize_x * drake_init.compSize_y, drake_init.iteration_size, drake_init.iteration_size - i - 1) + x + y * size_x) + 1] ||
+							inputNormal[i][x + y * size_x].z != drake_init.out[3 * (skip(drake_init.compSize_x * drake_init.compSize_y, drake_init.iteration_size, drake_init.iteration_size - i - 1) + x + y * size_x) + 2]
 						)
 						{
-							printf("[%s:%s:%d] Output difference at index (%zu, %zu) (%zu) for i = %zu: got (%i, %.10f, %.10f, %.10f, %.10f, %.10f, %.10f, %.10f), expected (%d, %.10f, %.10f, %.10f, %.10f, %.10f, %.10f, %.10f)\n", __FILE__, __FUNCTION__, __LINE__, x, y, slambench_skip, i,
+							printf("[%s:%s:%d] Output difference at index (%zu, %zu) (%zu) for i = %zu: got (%.10f, %.10f, %.10f), expected (%.10f, %.10f, %.10f)\n", __FILE__, __FUNCTION__, __LINE__, x, y, x + size_x * y, i, 
+								drake_init.out[3 * (skip(drake_init.compSize_x * drake_init.compSize_y, drake_init.iteration_size, drake_init.iteration_size - i - 1) + x + y * size_x) + 0],
+								drake_init.out[3 * (skip(drake_init.compSize_x * drake_init.compSize_y, drake_init.iteration_size, drake_init.iteration_size - i - 1) + x + y * size_x) + 1],
+								drake_init.out[3 * (skip(drake_init.compSize_x * drake_init.compSize_y, drake_init.iteration_size, drake_init.iteration_size - i - 1) + x + y * size_x) + 2],
+								inputNormal[i][x + y * size_x].x,
+								inputNormal[i][x + y * size_x].y,
+								inputNormal[i][x + y * size_x].z);
+							abort();
+						}
+						*/
+						/*
+						if(
+							trackingResult[slambench_skip].result != (int)drake_init.out[8 * drake_skip] ||
+							trackingResult[slambench_skip].error != drake_init.out[8 * drake_skip + 1] ||
+							trackingResult[slambench_skip].J[0] != drake_init.out[8 * drake_skip + 2] ||
+							trackingResult[slambench_skip].J[1] != drake_init.out[8 * drake_skip + 3] ||
+							trackingResult[slambench_skip].J[2] != drake_init.out[8 * drake_skip + 4] ||
+							trackingResult[slambench_skip].J[3] != drake_init.out[8 * drake_skip + 5] ||
+							trackingResult[slambench_skip].J[4] != drake_init.out[8 * drake_skip + 6] ||
+							trackingResult[slambench_skip].J[5] != drake_init.out[8 * drake_skip + 7]
+						)
+						{
+							debug(drake_skip * 8);
+							printf("[%s:%s:%d] Output difference at index (%zu, %zu) (%zu) for i = %zd / %u, j = %zu / %u: got (%i, %.10f, %.10f, %.10f, %.10f, %.10f, %.10f, %.10f), expected (%d, %.10f, %.10f, %.10f, %.10f, %.10f, %.10f, %.10f)\n", __FILE__, __FUNCTION__, __LINE__, x, y, slambench_skip, i, drake_init.iteration_size, j, drake_init.iteration[i],
 	//drake_init.out[skip], ScaledDepth[i][slambench_skip], log10(fabsf(drake_init.out[skip] - ScaledDepth[i][slambench_skip]))
-								(int)drake_init.out[8 * (skip)],
-								drake_init.out[8 * (skip) + 1],
-								drake_init.out[8 * (skip) + 2],
-								drake_init.out[8 * (skip) + 3],
-								drake_init.out[8 * (skip) + 4],
-								drake_init.out[8 * (skip) + 5],
-								drake_init.out[8 * (skip) + 6],
-								drake_init.out[8 * (skip) + 7],
+								(int)(drake_init.out[8 * drake_skip]),
+								drake_init.out[8 * drake_skip + 1],
+								drake_init.out[8 * drake_skip + 2],
+								drake_init.out[8 * drake_skip + 3],
+								drake_init.out[8 * drake_skip + 4],
+								drake_init.out[8 * drake_skip + 5],
+								drake_init.out[8 * drake_skip + 6],
+								drake_init.out[8 * drake_skip + 7],
 								trackingResult[slambench_skip].result,
 								trackingResult[slambench_skip].error,
 								trackingResult[slambench_skip].J[0],
@@ -305,16 +349,40 @@ int main(int argc, char ** argv) {
 							);
 							abort();
 						}
+						*/
 					}
 
-					skip++;
+					drake_skip++;
 					slambench_skip++;
 				}
 			}
 		}
 	}
-	debug(skip);
+#else
+	size_t drake_skip = 0;
+	for(ptrdiff_t i = drake_init.iteration_size - 1; i >= 0; i--)
+	{
+		for(size_t j = 0; j < drake_init.iteration[i]; j++)
+		{
+			drake_skip++;
+		}
+	}
+	for(size_t i = 0; i < 8; i++)
+	{
+		for(size_t j = 0; j < 32; j++)
+		{
+			float got = drake_init.out[2 * 8 * 32 + j + i * 32];
+			float expected = reductionoutput[j + i * 32];
 
+			if(got != expected)
+			{
+				printf("[%s:%s:%d] Output difference at index (%zu, %zu) (%zu): got %.10f, expected %.10f\n", __FILE__, __FUNCTION__, __LINE__, i, j, j + i * 32, got, expected);
+				abort();
+			}
+		}
+	}
+#endif
+	
 	// TODO: get rid of these dynamic, repetitive allocation and free
 	free(drake_init.out);
 	free(drake_init.iteration);

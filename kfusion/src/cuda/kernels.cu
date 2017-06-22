@@ -42,6 +42,7 @@
 
 
 float **ScaledDepth = NULL;
+float *reductionoutput = NULL;
 struct TrackData;
 TrackData *trackingResult = NULL;
 bool print_kernel_timing = false;

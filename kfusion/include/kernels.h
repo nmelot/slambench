@@ -20,6 +20,7 @@ extern float **ScaledDepth;
 extern float3 **inputVertex;
 extern float3 **inputNormal;
 extern TrackData *trackingResult;
+extern float *reductionoutput;
 
 void initVolumeKernel(Volume volume);
 

@@ -30,6 +30,7 @@ cl_mem ocl_output_render_buffer = NULL; // Common buffer for rendering track, de
 
 float *gaussian = NULL;
 float **ScaledDepth = NULL;
+float *reductionoutput = NULL;
 float3 **inputVertex = NULL;
 float3 **inputNormal = NULL;
 struct TrackData;

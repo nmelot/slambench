@@ -4,8 +4,15 @@ project(pamela_testcases)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O3 -std=gnu++11   ")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 -std=gnu++11  ")
+string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
+IF(CMAKE_BUILD_TYPE_UPPER MATCHES DEBUG)
+	SET(OPT_FLAGS "-O0")
+ELSE()
+	SET(OPT_FLAGS "-O3")
+ENDIF()
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OPT_FLAGS} -std=gnu++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OPT_FLAGS} -std=gnu++11")
 
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O3      -Wall -Wno-unknown-pragmas -Wextra -Werror ")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3  -Wall -Wno-unknown-pragmas -Wextra -Werror ")
@@ -53,7 +60,14 @@ endif(OPENNI2_FOUND)
   add_executable(${appname}-benchmark-${version} src/benchmark.cpp src/PowerMonitor.cpp)
   target_link_libraries(${appname}-benchmark-${version} ${appname}-${version} ${main_common_libraries})
   SET_TARGET_PROPERTIES(${appname}-benchmark-${version}
+	PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
+  )
+  SET_TARGET_PROPERTIES(${appname}-benchmark-${version}
                              PROPERTIES COMPILE_FLAGS "${main_common_compile_flags}")
+
+  SET_TARGET_PROPERTIES(${appname}-benchmark-${version}
+                             PROPERTIES INSTALL_RPATH "${${appname}_${version}_rpath}")
+
 
 
 #  ------ MAIN --------
@@ -61,6 +75,11 @@ endif(OPENNI2_FOUND)
     add_executable(${appname}-main-${version} src/mainQt.cpp src/PowerMonitor.cpp src/reader.cpp)
       SET_TARGET_PROPERTIES(${appname}-main-${version}
                              PROPERTIES COMPILE_FLAGS "${main_common_compile_flags}")
+  SET_TARGET_PROPERTIES(${appname}-main-${version}
+	PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
+  )
+  SET_TARGET_PROPERTIES(${appname}-main-${version}
+                             PROPERTIES INSTALL_RPATH "${${appname}_${version}_rpath}")
 
 
 if(APPLE)
@@ -82,7 +101,7 @@ endif(APPLE)
     set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
     include_directories(qt)
-    add_definitions( -D_FILE_OFFSET_BITS=64 -fPIC )
+    add_definitions(-D_FILE_OFFSET_BITS=64 -fPIC)
 
     add_executable(${appname}-qt-${version} src/mainQt.cpp src/PowerMonitor.cpp ${qt_srcs} src/reader.cpp)
 
