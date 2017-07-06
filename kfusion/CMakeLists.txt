@@ -34,28 +34,30 @@ endif(APPLE)
 
 set(common_compile_flags "")
 
+set(BUILD_EVERYTHING TRUE)
 
+if(BUILD_EVERYTHING)
  # ----------------- CPP VERSION ----------------- 
 
-#add_library(${appname}-cpp  src/cpp/kernels.cpp)
-#target_link_libraries(${appname}-cpp   ${common_libraries})	
-#add_version(${appname} cpp "" "")
+add_library(${appname}-cpp  src/cpp/kernels.cpp)
+target_link_libraries(${appname}-cpp   ${common_libraries})	
+add_version(${appname} cpp "" "")
 
  # ----------------- OPENMP VERSION ----------------- 
 
-#add_library(${appname}-openmp  src/cpp/kernels.cpp)
-#target_link_libraries(${appname}-openmp   ${common_libraries})	
-#SET_TARGET_PROPERTIES(${appname}-openmp PROPERTIES COMPILE_FLAGS "-fopenmp")
-#add_version(${appname} openmp "-fopenmp" "-fopenmp")
+add_library(${appname}-openmp  src/cpp/kernels.cpp)
+target_link_libraries(${appname}-openmp   ${common_libraries})	
+SET_TARGET_PROPERTIES(${appname}-openmp PROPERTIES COMPILE_FLAGS "-fopenmp")
+add_version(${appname} openmp "-fopenmp" "-fopenmp")
 
 
  #  ----------------- OCL VERSION ----------------- 
  
 if (OPENCL_FOUND) 
-#   include_directories(${OPENCL_INCLUDE_DIRS})
-#    add_library(${appname}-opencl  src/opencl/kernels.cpp src/opencl/common_opencl.cpp)
-#    target_link_libraries(${appname}-opencl   ${common_libraries} ${OPENCL_LIBRARIES})	
-#    add_version(${appname} opencl "" "")
+   include_directories(${OPENCL_INCLUDE_DIRS})
+    add_library(${appname}-opencl  src/opencl/kernels.cpp src/opencl/common_opencl.cpp)
+    target_link_libraries(${appname}-opencl   ${common_libraries} ${OPENCL_LIBRARIES})	
+    add_version(${appname} opencl "" "")
 endif(OPENCL_FOUND)
 
 
@@ -68,13 +70,14 @@ set(kfusion_cuda_srcs
 	thirdparty/kfusion.h
 	)
    	
-#    cuda_add_library(${appname}-cuda    STATIC  ${kfusion_cuda_srcs} OPTIONS -O3 -std=c++11 -Xcompiler "-std=c++11" )
-#	target_link_libraries(${appname}-cuda   ${common_libraries})	
-#    add_version(${appname} cuda    "" "")
+    cuda_add_library(${appname}-cuda    STATIC  ${kfusion_cuda_srcs} OPTIONS -O3 -std=c++11 -Xcompiler "-std=c++11" )
+	target_link_libraries(${appname}-cuda   ${common_libraries})	
+    add_version(${appname} cuda    "" "")
 
 endif(CUDA_FOUND)
 
 #  ----------------- thirdparty ----------------- 
+endif()
 
 # ----------- Drake version ------
 if (DRAKE_FOUND)

@@ -21,6 +21,7 @@ extern float3 **inputVertex;
 extern float3 **inputNormal;
 extern TrackData *trackingResult;
 extern float *reductionoutput;
+extern Volume volume;
 
 void initVolumeKernel(Volume volume);
 

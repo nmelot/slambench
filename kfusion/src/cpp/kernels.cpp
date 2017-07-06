@@ -578,16 +578,16 @@ void mm2metersKernel(float * out, uint2 outSize, const ushort * in,
 
 	int ratio = inSize.x / outSize.x;
 	unsigned int y;
-	std::cout << "Begin mm2meters" << std::endl;
+	//std::cout << "Begin mm2meters" << std::endl;
 #pragma omp parallel for \
         shared(out), private(y)
 	for (y = 0; y < outSize.y; y++)
 		for (unsigned int x = 0; x < outSize.x; x++) {
 			out[x + outSize.x * y] = in[x * ratio + inSize.x * y * ratio]
 					/ 1000.0f;
-			std::cout << out[x + outSize.x * y] << " ";
+			//std::cout << out[x + outSize.x * y] << " ";
 		}
-	std::cout << std::endl;
+	//std::cout << std::endl;
 	TOCK("mm2metersKernel", outSize.x * outSize.y);
 }
 

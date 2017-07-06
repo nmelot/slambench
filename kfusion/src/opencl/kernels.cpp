@@ -18,6 +18,7 @@
 
 // input once
 cl_mem ocl_gaussian = NULL;
+Volume volume;
 
 // inter-frame
 Matrix4 oldPose;
