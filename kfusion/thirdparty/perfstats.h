@@ -28,6 +28,10 @@
 #include <time.h>
 #include <math.h>
 
+#ifdef debug
+#undef debug
+#endif
+
 struct PerfStats {
 	enum Type {
 		TIME,

@@ -31,12 +31,17 @@
 #define DEBUG 1
 #endif
 
+#ifdef debug
+#undef debug
+#endif
+
 #if DEBUG != 0
-#define debug(var) std::cout << "[" << __FILE__ << ":" << __FUNCTION__ << ":" << __LINE__ << "] " << #var << " = \"" << var << "\"" << std::endl;
+#define debug(var) std::cout << "[" << __FILE__ << ":" << __FUNCTION__ << ":" << __LINE__ << "] " << #var << " = \"" << (var) << "\"" << std::endl;
 #else
 #define debug(var)
 #endif
 
+#define checkVolume() { float volumePreTotal = 0; for(uint x = 0; x < volume.size.x; x++) { for(uint y = 0; y < volume.size.y; y++) { for(uint z = 0; z < volume.size.z; z++) { volumePreTotal += volume[make_uint3(x, y, z)].x; volumePreTotal += volume[make_uint3(x, y, z)].y; } } } debug(volumePreTotal); }
 drake_declare(drake_kfusion)
 
 inline double tock() {
@@ -60,7 +65,7 @@ inline double tock() {
  * This program loop over a scene recording
  */
 
-void matrix4ToFloat16(float out[16], const Matrix4 &in)
+static void matrix4ToFloat16(float out[16], const Matrix4 &in)
 {
 	out[0] = in.data[0].x;
 	out[1] = in.data[0].y;
@@ -205,6 +210,9 @@ int main(int argc, char ** argv) {
 	drake_init.dist_threshold = 0.1f;
 	drake_init.normal_threshold = 0.8f;
 	drake_init.integration_rate = config.integration_rate;
+	drake_init.tracking_rate = config.tracking_rate;
+	drake_init.rendering_rate = config.rendering_rate;
+	drake_init.integration_rate = config.integration_rate;
 	matrix4ToFloat16(drake_init.pose, kfusion.getPose());
 	drake_init.iteration_size = config.pyramid.size();
 	drake_init.mu = config.mu;
@@ -215,6 +223,9 @@ int main(int argc, char ** argv) {
 	drake_init.farPlane = farPlane;
 	drake_init.step = min(config.volume_size) / max(config.volume_resolution);
 	drake_init.iteration = (unsigned int*)malloc(sizeof(int) * drake_init.iteration_size);
+	drake_init.render_depth = (unsigned char*)malloc(sizeof(unsigned char) * 4 * drake_init.compSize_x * drake_init.compSize_y);
+	drake_init.render_track = (unsigned char*)malloc(sizeof(unsigned char) * 4 * drake_init.compSize_x * drake_init.compSize_y);
+	drake_init.render_volume = (unsigned char*)malloc(sizeof(unsigned char) * 4 * drake_init.compSize_x * drake_init.compSize_y);
 	size_t buffer_size = 0;
 	for(std::vector<int>::iterator i = config.pyramid.begin(); i != config.pyramid.end(); i++)
 	{
@@ -222,9 +233,14 @@ int main(int argc, char ** argv) {
 		drake_init.iteration[ii] = *i;
 		buffer_size += *i;
 	}
-	//drake_init.pose[0] = init_pose.x;
-	//drake_init.pose[1] = init_pose.y;
-	//drake_init.pose[2] = init_pose.z;
+	Matrix4 initPose = toMatrix4(TooN::SE3<float>(TooN::makeVector(init_pose.x, init_pose.y, init_pose.z, 0, 0, 0)));
+	for(int i = 0; i < 4; i++)
+	{
+		drake_init.pose[4 * i + 0] = initPose.data[i].x;
+		drake_init.pose[4 * i + 1] = initPose.data[i].y;
+		drake_init.pose[4 * i + 2] = initPose.data[i].z;
+		drake_init.pose[4 * i + 3] = initPose.data[i].w;
+	}
 	drake_init.vertex = (float*)calloc(computationSize.x * computationSize.y, sizeof(float));
 	drake_init.normal = (float*)calloc(computationSize.x * computationSize.y, sizeof(float));
 	drake_init.track_data = (float*)calloc(computationSize.x * computationSize.y, sizeof(TrackData));
@@ -236,21 +252,28 @@ int main(int argc, char ** argv) {
 	drake_init.camera[2] = camera.z;
 	drake_init.camera[3] = camera.w;
 	drake_init.icp_threshold = config.icp_threshold;
-	drake_init.frame_available = 0;
+	drake_init.frame_done = 1;
 	drake_init.no_more_frame = 0;
 	drake_platform_stream_init(stream, &drake_init);
+	drake_init.in = inputDepth;
+
+	drake_init.viewPose = &initPose;
+	drake_init.light = &light;
+	drake_init.ambient = &ambient;
 
 	drake_platform_stream_run_async(stream);
 	while (reader->readNextDepthFrame(inputDepth)) {
+		drake_init.frame_done = 0;
 		// Wait for the frame spot to be available
-		while(drake_init.frame_available != 0);
 		// Send next frame to pipeline
-		drake_init.in = inputDepth;
 		// Mark new frame as available
-		drake_init.frame_available = 1;
+		while(drake_init.frame_done == 0);
 	}
 	drake_init.no_more_frame = 1;
 	drake_platform_stream_wait(stream);
+	free(drake_init.render_depth);
+	free(drake_init.render_track);
+	free(drake_init.render_volume);
 
 	if (is_file(config.input_file)) {
 		reader = new RawDepthReader(config.input_file, config.fps,
@@ -260,6 +283,7 @@ int main(int argc, char ** argv) {
 		reader = new SceneDepthReader(config.input_file, config.fps,
 				config.blocking_read);
 	}
+	kfusion.reset();
 
 	while (reader->readNextDepthFrame(inputDepth)) {
 		Matrix4 pose = kfusion.getPose();
@@ -285,14 +309,12 @@ int main(int argc, char ** argv) {
 		timings[4] = tock();
 
 		bool raycast = kfusion.raycasting(camera, config.mu, frame);
-/*
 
 		timings[5] = tock();
 
 		kfusion.renderDepth(depthRender, computationSize);
 		kfusion.renderTrack(trackRender, computationSize);
-		kfusion.renderVolume(volumeRender, computationSize, frame,
-				config.rendering_rate, camera, 0.75 * config.mu);
+		kfusion.renderVolume(volumeRender, computationSize, frame, config.rendering_rate, camera, 0.75 * config.mu);
 
 		timings[6] = tock();
 
@@ -307,7 +329,6 @@ int main(int argc, char ** argv) {
 				<< xt << "\t" << yt << "\t" << zt << "\t"     //  X,Y,Z
 				<< tracked << "        \t" << integrated // tracked and integrated flags
 				<< std::endl;
-*/
 
 		frame++;
 

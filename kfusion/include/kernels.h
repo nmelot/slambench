@@ -15,6 +15,16 @@
 
 ////////////////////////// COMPUTATION KERNELS PROTOTYPES //////////////////////
 
+#ifndef DEBUG
+#define DEBUG 1
+#endif
+
+#if DEBUG != 0
+#define debug(var) std::cout << "[" << __FILE__ << ":" << __FUNCTION__ << ":" << __LINE__ << "] " << #var << " = \"" << var << "\"" << std::endl;
+#else
+#define debug(var)
+#endif
+
 extern float *gaussian;
 extern float **ScaledDepth;
 extern float3 **inputVertex;
