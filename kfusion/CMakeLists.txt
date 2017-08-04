@@ -39,14 +39,15 @@ set(BUILD_EVERYTHING TRUE)
 if(BUILD_EVERYTHING)
  # ----------------- CPP VERSION ----------------- 
 
-add_library(${appname}-cpp  src/cpp/kernels.cpp)
-target_link_libraries(${appname}-cpp   ${common_libraries})	
+add_library(${appname}-cpp src/cpp/kernels.cpp)
+target_link_libraries(${appname}-cpp ${common_libraries} ${OPENNI2_LIBRARIES})
+set(${appname}_cpp_rpath ${OPENNI2_LIB_PATH}:$ENV{LD_RUN_PATH})
 add_version(${appname} cpp "" "")
 
  # ----------------- OPENMP VERSION ----------------- 
 
 add_library(${appname}-openmp  src/cpp/kernels.cpp)
-target_link_libraries(${appname}-openmp   ${common_libraries})	
+target_link_libraries(${appname}-openmp ${common_libraries} ${OPENNI2_LIBRARIES})
 SET_TARGET_PROPERTIES(${appname}-openmp PROPERTIES COMPILE_FLAGS "-fopenmp")
 add_version(${appname} openmp "-fopenmp" "-fopenmp")
 
@@ -56,7 +57,7 @@ add_version(${appname} openmp "-fopenmp" "-fopenmp")
 if (OPENCL_FOUND) 
    include_directories(${OPENCL_INCLUDE_DIRS})
     add_library(${appname}-opencl  src/opencl/kernels.cpp src/opencl/common_opencl.cpp)
-    target_link_libraries(${appname}-opencl   ${common_libraries} ${OPENCL_LIBRARIES})	
+    target_link_libraries(${appname}-opencl ${common_libraries} ${OPENCL_LIBRARIES} ${OPENNI2_LIBRARIES})	
     add_version(${appname} opencl "" "")
 endif(OPENCL_FOUND)
 
@@ -70,8 +71,8 @@ set(kfusion_cuda_srcs
 	thirdparty/kfusion.h
 	)
    	
-    cuda_add_library(${appname}-cuda    STATIC  ${kfusion_cuda_srcs} OPTIONS -O3 -std=c++11 -Xcompiler "-std=c++11" )
-	target_link_libraries(${appname}-cuda   ${common_libraries})	
+    cuda_add_library(${appname}-cuda STATIC ${kfusion_cuda_srcs} OPTIONS -O3 -std=c++11 -Xcompiler "-std=c++11" )
+	target_link_libraries(${appname}-cuda ${common_libraries} ${OPENNI2_LIBRARIES})
     add_version(${appname} cuda    "" "")
 
 endif(CUDA_FOUND)
@@ -83,9 +84,9 @@ endif()
 if (DRAKE_FOUND)
 	string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
 	IF(CMAKE_BUILD_TYPE_UPPER MATCHES DEBUG)
-		set(${appname}_drake_rpath ${DRAKE_DEBUG_LIB_PATH}:$ENV{LD_RUN_PATH})
+		set(${appname}_drake_rpath ${DRAKE_DEBUG_LIB_PATH}:${OPENNI2_LIB_PATH}:$ENV{LD_RUN_PATH})
 	ELSE()
-		set(${appname}_drake_rpath ${DRAKE_LIB_PATH}:$ENV{LD_RUN_PATH})
+		set(${appname}_drake_rpath ${DRAKE_LIB_PATH}:${OPENNI2_LIB_PATH}:$ENV{LD_RUN_PATH})
 	ENDIF()
 	include_directories(${DRAKE_INCLUDE_DIRS})
 	add_library(${appname}-drake src/drake/wrapper.cpp)

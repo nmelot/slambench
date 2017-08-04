@@ -23,27 +23,6 @@
 #include <iomanip>
 #include <getopt.h>
 
-#include <drake.h>
-#include <drake/intel-ia.h>
-#include <drake-kfusion.h>
-
-#ifndef DEBUG
-#define DEBUG 1
-#endif
-
-#ifdef debug
-#undef debug
-#endif
-
-#if DEBUG != 0
-#define debug(var) std::cout << "[" << __FILE__ << ":" << __FUNCTION__ << ":" << __LINE__ << "] " << #var << " = \"" << (var) << "\"" << std::endl;
-#else
-#define debug(var)
-#endif
-
-#define checkVolume() { float volumePreTotal = 0; for(uint x = 0; x < volume.size.x; x++) { for(uint y = 0; y < volume.size.y; y++) { for(uint z = 0; z < volume.size.z; z++) { volumePreTotal += volume[make_uint3(x, y, z)].x; volumePreTotal += volume[make_uint3(x, y, z)].y; } } } debug(volumePreTotal); }
-drake_declare(drake_kfusion)
-
 inline double tock() {
 	synchroniseDevices();
 #ifdef __APPLE__
@@ -59,57 +38,9 @@ inline double tock() {
 		return (double) clockData.tv_sec + clockData.tv_nsec / 1000000000.0;
 }	
 
-
-
 /***
  * This program loop over a scene recording
  */
-
-static void matrix4ToFloat16(float out[16], const Matrix4 &in)
-{
-	out[0] = in.data[0].x;
-	out[1] = in.data[0].y;
-	out[2] = in.data[0].z;
-	out[3] = in.data[0].w;
-	out[4] = in.data[1].x;
-	out[5] = in.data[1].y;
-	out[6] = in.data[1].z;
-	out[7] = in.data[1].w;
-	out[8] = in.data[2].x;
-	out[9] = in.data[2].y;
-	out[10] = in.data[2].z;
-	out[11] = in.data[2].w;
-	out[12] = in.data[3].x;
-	out[13] = in.data[3].y;
-	out[14] = in.data[3].z;
-	out[15] = in.data[3].w;
-}
-
-static size_t
-skip(size_t base, size_t ss, size_t aa)
-{
-	size_t kk = 4;
-	/*
-	float a = powf(k, (int)i * -1);
-	float b = powf(k, (int)i) - 1;
-	float c = a * b;
-	float d = c * base;
-	float e = d / (k - 1);
-
-	return e;
-	*/
-	// n * (k^a - 1) * k^(1 - (s + 1)) / (k - 1);
-	ptrdiff_t a = pow(kk, aa);
-	ptrdiff_t b = a - 1;
-	ptrdiff_t c = base * b;
-	ptrdiff_t e = 1 - ss;
-	float f = pow(kk, e);
-	float g = c * f;
-	ptrdiff_t h = kk - 1;
-	ptrdiff_t i = g / h;
-	return i;
-	//return base * (pow(kk, aa - 1) - 1) * pow(kk, 1 - ss) / (kk - 1);
-}
 
 int main(int argc, char ** argv) {
 
@@ -141,7 +72,6 @@ int main(int argc, char ** argv) {
 	if (is_file(config.input_file)) {
 		reader = new RawDepthReader(config.input_file, config.fps,
 				config.blocking_read);
-
 	} else {
 		reader = new SceneDepthReader(config.input_file, config.fps,
 				config.blocking_read);
@@ -188,102 +118,6 @@ int main(int argc, char ** argv) {
 			<< "frame\tacquisition\tpreprocessing\ttracking\tintegration\traycasting\trendering\tcomputation\ttotal    \tX          \tY          \tZ         \ttracked   \tintegrated"
 			<< std::endl;
 	logstream->setf(std::ios::fixed, std::ios::floatfield);
-
-	ia_arguments_t args;
-	args.num_cores = 1; 
-	args.poll_at_idle = 1;
-	args.wait_after_scaling = 0;
-	drake_platform_t stream;
-	drake_kfusion_t drake_init;
-	stream = drake_platform_init(&args);
-	drake_platform_stream_create(stream, drake_kfusion);
-
-	// Initialize stream (The scc requires this phase to not be run in parallel because of extensive IOs when loading input)
-
-	drake_init.inSize_x = inputSize.x;
-	drake_init.inSize_y = inputSize.y;
-	drake_init.compSize_x = computationSize.x;
-	drake_init.compSize_y = computationSize.y;
-	drake_init.gaussian = gaussian; 
-	drake_init.e_d = e_delta;
-	drake_init.r = radius;
-	drake_init.dist_threshold = 0.1f;
-	drake_init.normal_threshold = 0.8f;
-	drake_init.integration_rate = config.integration_rate;
-	drake_init.tracking_rate = config.tracking_rate;
-	drake_init.rendering_rate = config.rendering_rate;
-	drake_init.integration_rate = config.integration_rate;
-	matrix4ToFloat16(drake_init.pose, kfusion.getPose());
-	drake_init.iteration_size = config.pyramid.size();
-	drake_init.mu = config.mu;
-	drake_init.maxweight = maxweight;
-	drake_init.track_threshold = track_threshold;
-	drake_init.volume = &volume;
-	drake_init.nearPlane = nearPlane;
-	drake_init.farPlane = farPlane;
-	drake_init.step = min(config.volume_size) / max(config.volume_resolution);
-	drake_init.iteration = (unsigned int*)malloc(sizeof(int) * drake_init.iteration_size);
-	drake_init.render_depth = (unsigned char*)malloc(sizeof(unsigned char) * 4 * drake_init.compSize_x * drake_init.compSize_y);
-	drake_init.render_track = (unsigned char*)malloc(sizeof(unsigned char) * 4 * drake_init.compSize_x * drake_init.compSize_y);
-	drake_init.render_volume = (unsigned char*)malloc(sizeof(unsigned char) * 4 * drake_init.compSize_x * drake_init.compSize_y);
-	size_t buffer_size = 0;
-	for(std::vector<int>::iterator i = config.pyramid.begin(); i != config.pyramid.end(); i++)
-	{
-		size_t ii = std::distance(config.pyramid.begin(), i);
-		drake_init.iteration[ii] = *i;
-		buffer_size += *i;
-	}
-	Matrix4 initPose = toMatrix4(TooN::SE3<float>(TooN::makeVector(init_pose.x, init_pose.y, init_pose.z, 0, 0, 0)));
-	for(int i = 0; i < 4; i++)
-	{
-		drake_init.pose[4 * i + 0] = initPose.data[i].x;
-		drake_init.pose[4 * i + 1] = initPose.data[i].y;
-		drake_init.pose[4 * i + 2] = initPose.data[i].z;
-		drake_init.pose[4 * i + 3] = initPose.data[i].w;
-	}
-	drake_init.vertex = (float*)calloc(computationSize.x * computationSize.y, sizeof(float));
-	drake_init.normal = (float*)calloc(computationSize.x * computationSize.y, sizeof(float));
-	drake_init.track_data = (float*)calloc(computationSize.x * computationSize.y, sizeof(TrackData));
-	size_t outSize = (computationSize.x * computationSize.y) * ((pow(4, drake_init.iteration_size) - 1) / drake_init.iteration_size - 1) * 8 * buffer_size;
-	drake_init.out = (float*)malloc(sizeof(float) * outSize);
-	drake_init.outSize = outSize;
-	drake_init.camera[0] = camera.x;
-	drake_init.camera[1] = camera.y;
-	drake_init.camera[2] = camera.z;
-	drake_init.camera[3] = camera.w;
-	drake_init.icp_threshold = config.icp_threshold;
-	drake_init.frame_done = 1;
-	drake_init.no_more_frame = 0;
-	drake_platform_stream_init(stream, &drake_init);
-	drake_init.in = inputDepth;
-
-	drake_init.viewPose = &initPose;
-	drake_init.light = &light;
-	drake_init.ambient = &ambient;
-
-	drake_platform_stream_run_async(stream);
-	while (reader->readNextDepthFrame(inputDepth)) {
-		drake_init.frame_done = 0;
-		// Wait for the frame spot to be available
-		// Send next frame to pipeline
-		// Mark new frame as available
-		while(drake_init.frame_done == 0);
-	}
-	drake_init.no_more_frame = 1;
-	drake_platform_stream_wait(stream);
-	free(drake_init.render_depth);
-	free(drake_init.render_track);
-	free(drake_init.render_volume);
-
-	if (is_file(config.input_file)) {
-		reader = new RawDepthReader(config.input_file, config.fps,
-				config.blocking_read);
-
-	} else {
-		reader = new SceneDepthReader(config.input_file, config.fps,
-				config.blocking_read);
-	}
-	kfusion.reset();
 
 	while (reader->readNextDepthFrame(inputDepth)) {
 		Matrix4 pose = kfusion.getPose();
@@ -333,116 +167,10 @@ int main(int argc, char ** argv) {
 		frame++;
 
 		timings[0] = tock();
-
-#if CHECK_TRACK
-		size_t drake_skip = 0;
-		for(ptrdiff_t i = drake_init.iteration_size - 1; i >= 0; i--)
-		{
-			for(size_t j = 0; j < drake_init.iteration[i]; j++)
-			{
-				size_t slambench_skip = 0;
-				size_t size_x = drake_init.compSize_x / pow(2, drake_init.iteration_size - i - 1);
-				size_t size_y = drake_init.compSize_y / pow(2, drake_init.iteration_size - i - 1);
-				for (size_t y = 0; y < size_y; y++)
-				{
-					for (size_t x = 0; x < size_x; x++)
-					{
-						if(i == 0 && j == drake_init.iteration[i] - 1)
-						{
-							/*
-							if(
-								inputNormal[i][x + y * size_x].x != drake_init.out[3 * (skip(drake_init.compSize_x * drake_init.compSize_y, drake_init.iteration_size, drake_init.iteration_size - i - 1) + x + y * size_x) + 0] ||
-								inputNormal[i][x + y * size_x].y != drake_init.out[3 * (skip(drake_init.compSize_x * drake_init.compSize_y, drake_init.iteration_size, drake_init.iteration_size - i - 1) + x + y * size_x) + 1] ||
-								inputNormal[i][x + y * size_x].z != drake_init.out[3 * (skip(drake_init.compSize_x * drake_init.compSize_y, drake_init.iteration_size, drake_init.iteration_size - i - 1) + x + y * size_x) + 2]
-							)
-							{
-								printf("[%s:%s:%d] Output difference at index (%zu, %zu) (%zu) for i = %zu: got (%.10f, %.10f, %.10f), expected (%.10f, %.10f, %.10f)\n", __FILE__, __FUNCTION__, __LINE__, x, y, x + size_x * y, i, 
-									drake_init.out[3 * (skip(drake_init.compSize_x * drake_init.compSize_y, drake_init.iteration_size, drake_init.iteration_size - i - 1) + x + y * size_x) + 0],
-									drake_init.out[3 * (skip(drake_init.compSize_x * drake_init.compSize_y, drake_init.iteration_size, drake_init.iteration_size - i - 1) + x + y * size_x) + 1],
-									drake_init.out[3 * (skip(drake_init.compSize_x * drake_init.compSize_y, drake_init.iteration_size, drake_init.iteration_size - i - 1) + x + y * size_x) + 2],
-									inputNormal[i][x + y * size_x].x,
-									inputNormal[i][x + y * size_x].y,
-									inputNormal[i][x + y * size_x].z);
-								abort();
-							}
-							*/
-							/*
-							if(
-								trackingResult[slambench_skip].result != (int)drake_init.out[8 * drake_skip] ||
-								trackingResult[slambench_skip].error != drake_init.out[8 * drake_skip + 1] ||
-								trackingResult[slambench_skip].J[0] != drake_init.out[8 * drake_skip + 2] ||
-								trackingResult[slambench_skip].J[1] != drake_init.out[8 * drake_skip + 3] ||
-								trackingResult[slambench_skip].J[2] != drake_init.out[8 * drake_skip + 4] ||
-								trackingResult[slambench_skip].J[3] != drake_init.out[8 * drake_skip + 5] ||
-								trackingResult[slambench_skip].J[4] != drake_init.out[8 * drake_skip + 6] ||
-								trackingResult[slambench_skip].J[5] != drake_init.out[8 * drake_skip + 7]
-							)
-							{
-								debug(drake_skip * 8);
-								printf("[%s:%s:%d] Output difference at index (%zu, %zu) (%zu) for i = %zd / %u, j = %zu / %u: got (%i, %.10f, %.10f, %.10f, %.10f, %.10f, %.10f, %.10f), expected (%d, %.10f, %.10f, %.10f, %.10f, %.10f, %.10f, %.10f)\n", __FILE__, __FUNCTION__, __LINE__, x, y, slambench_skip, i, drake_init.iteration_size, j, drake_init.iteration[i],
-		//drake_init.out[skip], ScaledDepth[i][slambench_skip], log10(fabsf(drake_init.out[skip] - ScaledDepth[i][slambench_skip]))
-									(int)(drake_init.out[8 * drake_skip]),
-									drake_init.out[8 * drake_skip + 1],
-									drake_init.out[8 * drake_skip + 2],
-									drake_init.out[8 * drake_skip + 3],
-									drake_init.out[8 * drake_skip + 4],
-									drake_init.out[8 * drake_skip + 5],
-									drake_init.out[8 * drake_skip + 6],
-									drake_init.out[8 * drake_skip + 7],
-									trackingResult[slambench_skip].result,
-									trackingResult[slambench_skip].error,
-									trackingResult[slambench_skip].J[0],
-									trackingResult[slambench_skip].J[1],
-									trackingResult[slambench_skip].J[2],
-									trackingResult[slambench_skip].J[3],
-									trackingResult[slambench_skip].J[4],
-									trackingResult[slambench_skip].J[5]
-								);
-								abort();
-							}
-							*/
-						}
-
-						drake_skip++;
-						slambench_skip++;
-					}
-				}
-			}
-		}
-#endif
-#define CHECK_REDUCE 0
-#if CHECK_REDUCE
-		size_t drake_skip = 0;
-		for(ptrdiff_t i = drake_init.iteration_size - 1; i >= 0; i--)
-		{
-			for(size_t j = 0; j < drake_init.iteration[i]; j++)
-			{
-				drake_skip++;
-			}
-		}
-
-		for(size_t i = 0; i < 8; i++)
-		{
-			for(size_t j = 0; j < 32; j++)
-			{
-				float got = drake_init.out[2 * 8 * 32 + j + i * 32];
-				float expected = reductionoutput[j + i * 32];
-
-				if(got != expected)
-				{
-					printf("[%s:%s:%d] Output difference at index (%zu, %zu) (%zu): got %.10f, expected %.10f\n", __FILE__, __FUNCTION__, __LINE__, i, j, j + i * 32, got, expected);
-					abort();
-				}
-			}
-		}
-#endif
 	}
 	
-	// TODO: get rid of these dynamic, repetitive allocation and free
-	drake_platform_stream_destroy(stream);
-	free(drake_init.out);
-	free(drake_init.iteration);
-	drake_platform_destroy(stream);
+#if USE_DRAKE
+#endif
 
 	// ==========     DUMP VOLUME      =========
 
@@ -456,6 +184,7 @@ int main(int argc, char ** argv) {
 	free(depthRender);
 	free(trackRender);
 	free(volumeRender);
+	
 	return 0;
 
 }

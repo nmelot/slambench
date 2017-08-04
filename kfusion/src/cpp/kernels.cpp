@@ -36,8 +36,23 @@
 
 #endif
 
-// input once
-float * gaussian;
+#ifdef debug
+#undef debug
+#endif
+#ifdef string
+#undef string
+#endif
+
+#define DEBUG 1
+
+#if DEBUG != 0
+#define string(a) #a
+#define debug(var) std::cout << "[" << __FILE__ << ":" << __FUN ## CTION__ << ":" << __LINE__ << "] " << string(var) << " = \"" << (var) << "\"" << std::endl;
+#else
+#define debug(var)
+#endif
+
+float *gaussian;
 
 // inter-frame
 Volume volume;
@@ -65,7 +80,6 @@ bool print_kernel_timing = false;
 #endif
 	
 void Kfusion::languageSpecificConstructor() {
-
 	if (getenv("KERNEL_TIMINGS"))
 		print_kernel_timing = true;
 
@@ -109,6 +123,7 @@ void Kfusion::languageSpecificConstructor() {
 
 	volume.init(volumeResolution, volumeDimensions);
 	reset();
+	size_t i;
 }
 
 Kfusion::~Kfusion() {
@@ -143,8 +158,9 @@ void clean() {
 }
 ;
 // stub
-
+#define ENABLE_KFUSION 1
 void initVolumeKernel(Volume volume) {
+#if ENABLE_KFUSION
 	TICK();
 	for (unsigned int x = 0; x < volume.size.x; x++)
 		for (unsigned int y = 0; y < volume.size.y; y++) {
@@ -154,10 +170,12 @@ void initVolumeKernel(Volume volume) {
 			}
 		}
 	TOCK("initVolumeKernel", volume.size.x * volume.size.y * volume.size.z);
+#endif
 }
 
 void bilateralFilterKernel(float* out, const float* in, uint2 size,
 		const float * gaussian, float e_d, int r) {
+#if ENABLE_KFUSION
 	TICK()
 		uint y;
 		float e_d_squared_2 = e_d * e_d * 2;
@@ -195,10 +213,12 @@ void bilateralFilterKernel(float* out, const float* in, uint2 size,
 			}
 		}
 		TOCK("bilateralFilterKernel", size.x * size.y);
+#endif
 }
 
 void depth2vertexKernel(float3* vertex, const float * depth, uint2 imageSize,
 		const Matrix4 invK) {
+#if ENABLE_KFUSION
 	TICK();
 	unsigned int x, y;
 #pragma omp parallel for \
@@ -215,9 +235,11 @@ void depth2vertexKernel(float3* vertex, const float * depth, uint2 imageSize,
 		}
 	}
 	TOCK("depth2vertexKernel", imageSize.x * imageSize.y);
+#endif
 }
 
 void vertex2normalKernel(float3 * out, const float3 * in, uint2 imageSize) {
+#if ENABLE_KFUSION
 	TICK();
 	unsigned int x, y;
 #pragma omp parallel for \
@@ -246,10 +268,12 @@ void vertex2normalKernel(float3 * out, const float3 * in, uint2 imageSize) {
 		}
 	}
 	TOCK("vertex2normalKernel", imageSize.x * imageSize.y);
+#endif
 }
 
 void new_reduce(int blockIndex, float * out, TrackData* J, const uint2 Jsize,
 		const uint2 size) {
+#if ENABLE_KFUSION
 	float *sums = out + blockIndex * 32;
 
 	float * jtj = sums + 7;
@@ -296,6 +320,7 @@ void new_reduce(int blockIndex, float * out, TrackData* J, const uint2 Jsize,
 #pragma omp parallel for reduction(+:sums0,sums1,sums2,sums3,sums4,sums5,sums6,sums7,sums8,sums9,sums10,sums11,sums12,sums13,sums14,sums15,sums16,sums17,sums18,sums19,sums20,sums21,sums22,sums23,sums24,sums25,sums26,sums27,sums28,sums29,sums30,sums31)
 	for (uint y = blockIndex; y < size.y; y += 8) {
 		for (uint x = 0; x < size.x; x++) {
+			//if(y >= size.y - 1 && x >= size.x - 1) { float sums = sums0 + sums1 + sums2 + sums3 + sums4 + sums5 + sums6 + sums7 + sums8 + sums9 + sums10 + sums11 + sums12 + sums13 + sums14 + sums15 + sums16 + sums17 + sums18 + sums19 + sums20 + sums21 + sums22 + sums23 + sums24 + sums25 + sums26 + sums27 + sums28 + sums29 + sums30 + sums31; debug(sums); }
 
 			const TrackData & row = J[(x + y * Jsize.x)]; // ...
 			if (row.result < 1) {
@@ -386,10 +411,11 @@ void new_reduce(int blockIndex, float * out, TrackData* J, const uint2 Jsize,
 	sums[29] = sums29;
 	sums[30] = sums30;
 	sums[31] = sums31;
-
+#endif
 }
 void reduceKernel(float * out, TrackData* J, const uint2 Jsize,
 		const uint2 size) {
+#if ENABLE_KFUSION
 	TICK();
 	int blockIndex;
 #ifdef OLDREDUCE
@@ -480,6 +506,7 @@ void reduceKernel(float * out, TrackData* J, const uint2 Jsize,
 		}
 #else 
 		new_reduce(blockIndex, out, J, Jsize, size);
+		//float sums = 0; for(size_t ii = 0; ii < 8 * 32; ii++) { sums += out[ii]; } debug(sums);
 #endif
 
 	}
@@ -492,6 +519,7 @@ void reduceKernel(float * out, TrackData* J, const uint2 Jsize,
 		//std::cerr << "\n";
 	}
 	TOCK("reduceKernel", 512);
+#endif
 }
 
 void trackKernel(TrackData* output, const float3* inVertex,
@@ -499,8 +527,10 @@ void trackKernel(TrackData* output, const float3* inVertex,
 		const float3* refNormal, uint2 refSize, const Matrix4 Ttrack,
 		const Matrix4 view, const float dist_threshold,
 		const float normal_threshold) {
+#if ENABLE_KFUSION
 	TICK();
 	uint2 pixel = make_uint2(0, 0);
+	size_t mone = 0, mtwo = 0, mthree = 0, mfour = 0, mfive = 0, mok = 0;
 	unsigned int pixely, pixelx;
 #pragma omp parallel for \
 	    shared(output), private(pixel,pixelx,pixely)
@@ -513,27 +543,89 @@ void trackKernel(TrackData* output, const float3* inVertex,
 
 			if (inNormal[pixel.x + pixel.y * inSize.x].x == KFUSION_INVALID) {
 				row.result = -1;
+				mone++;
 				continue;
 			}
 
 			const float3 projectedVertex = Ttrack
 					* inVertex[pixel.x + pixel.y * inSize.x];
+			if(pixely == 0 && pixelx == 0 && 0)
+			{
+				debug(Ttrack.data[0].x);
+				debug(Ttrack.data[0].y);
+				debug(Ttrack.data[0].z);
+				debug(Ttrack.data[0].w);
+				debug(Ttrack.data[1].x);
+				debug(Ttrack.data[1].y);
+				debug(Ttrack.data[1].z);
+				debug(Ttrack.data[1].w);
+				debug(Ttrack.data[2].x);
+				debug(Ttrack.data[2].y);
+				debug(Ttrack.data[2].z);
+				debug(Ttrack.data[2].w);
+				debug(Ttrack.data[3].x);
+				debug(Ttrack.data[3].y);
+				debug(Ttrack.data[3].z);
+				debug(Ttrack.data[3].w);
+				debug(inVertex[pixel.x + pixel.y * inSize.x].x);
+				debug(inVertex[pixel.x + pixel.y * inSize.x].y);
+				debug(inVertex[pixel.x + pixel.y * inSize.x].z);
+				debug(projectedVertex.x);
+				debug(projectedVertex.y);
+				debug(projectedVertex.z);
+			}
 			const float3 projectedPos = view * projectedVertex;
+			if(pixely == 0 && pixelx == 0 && 0)
+			{
+				debug(view.data[0].x);
+				debug(view.data[0].y);
+				debug(view.data[0].z);
+				debug(view.data[0].w);
+				debug(view.data[1].x);
+				debug(view.data[1].y);
+				debug(view.data[1].z);
+				debug(view.data[1].w);
+				debug(view.data[2].x);
+				debug(view.data[2].y);
+				debug(view.data[2].z);
+				debug(view.data[2].w);
+				debug(view.data[3].x);
+				debug(view.data[3].y);
+				debug(view.data[3].z);
+				debug(view.data[3].w);
+				debug(projectedVertex.x);
+				debug(projectedVertex.y);
+				debug(projectedVertex.z);
+				debug(projectedPos.x);
+				debug(projectedPos.y);
+				debug(projectedPos.z);
+			}
 			const float2 projPixel = make_float2(
 					projectedPos.x / projectedPos.z + 0.5f,
 					projectedPos.y / projectedPos.z + 0.5f);
+
 			if (projPixel.x < 0 || projPixel.x > refSize.x - 1
 					|| projPixel.y < 0 || projPixel.y > refSize.y - 1) {
 				row.result = -2;
+			//if(pixelx == 0 && pixely == 0) { debug("Hello world!"); }
+				mtwo++;
 				continue;
 			}
 
 			const uint2 refPixel = make_uint2(projPixel.x, projPixel.y);
 			const float3 referenceNormal = refNormal[refPixel.x
 					+ refPixel.y * refSize.x];
+			if(pixelx == 0 && pixely == 0 && 0)
+			{
+				debug(referenceNormal.x);
+				debug(referenceNormal.y);
+				debug(referenceNormal.z);
+			}
 
 			if (referenceNormal.x == KFUSION_INVALID) {
 				row.result = -3;
+				//if(pixelx == 0 && pixely == 0) { debug("Hello world!"); }
+				mthree++;
 				continue;
 			}
 
@@ -541,26 +633,54 @@ void trackKernel(TrackData* output, const float3* inVertex,
 					- projectedVertex;
 			const float3 projectedNormal = rotate(Ttrack,
 					inNormal[pixel.x + pixel.y * inSize.x]);
+			if(pixelx == 0 && pixely == 0 && 0)
+			{
+				debug(inNormal[pixel.x + pixel.y * inSize.x].x);
+				debug(inNormal[pixel.x + pixel.y * inSize.x].y);
+				debug(inNormal[pixel.x + pixel.y * inSize.x].z);
+				debug(diff.x);
+				debug(diff.y);
+				debug(diff.z);
+				debug(projectedNormal.x);
+				debug(projectedNormal.y);
+				debug(projectedNormal.z);
+			}
 
 			if (length(diff) > dist_threshold) {
 				row.result = -4;
+			//if(pixelx == 0 && pixely == 0) { debug("Hello world!"); }
+				mfour++;
 				continue;
 			}
 			if (dot(projectedNormal, referenceNormal) < normal_threshold) {
 				row.result = -5;
+			//if(pixelx == 0 && pixely == 0) { debug("Hello world!"); }
+				mfive++;
 				continue;
 			}
 			row.result = 1;
 			row.error = dot(referenceNormal, diff);
 			((float3 *) row.J)[0] = referenceNormal;
 			((float3 *) row.J)[1] = cross(projectedVertex, referenceNormal);
+			//if(pixelx == 0 && pixely == 0) { debug("Hello world!"); }
+			mok++;
 		}
 	}
+/*
+	debug(mone);
+	debug(mtwo);
+	debug(mthree);
+	debug(mfour);
+	debug(mfive);
+	debug(mok);
+*/
 	TOCK("trackKernel", inSize.x * inSize.y);
+#endif
 }
 
 void mm2metersKernel(float * out, uint2 outSize, const ushort * in,
 		uint2 inSize) {
+#if ENABLE_KFUSION
 	TICK();
 	// Check for unsupported conditions
 	if ((inSize.x < outSize.x) || (inSize.y < outSize.y)) {
@@ -578,21 +698,36 @@ void mm2metersKernel(float * out, uint2 outSize, const ushort * in,
 
 	int ratio = inSize.x / outSize.x;
 	unsigned int y;
-	//std::cout << "Begin mm2meters" << std::endl;
 #pragma omp parallel for \
         shared(out), private(y)
 	for (y = 0; y < outSize.y; y++)
 		for (unsigned int x = 0; x < outSize.x; x++) {
 			out[x + outSize.x * y] = in[x * ratio + inSize.x * y * ratio]
 					/ 1000.0f;
-			//std::cout << out[x + outSize.x * y] << " ";
+			/*
+			if((x + outSize.x * y < 10) || (x + outSize.x * y > outSize.y * outSize.x - 10))
+			{
+				std::cout << "(" << x * ratio + inSize.x * y * ratio << ", " << in[x * ratio + inSize.x * y * ratio] << ") -> (" << x + outSize.x * y << ", " << out[x + outSize.x * y] << "), ";
+			}
+			*/
 		}
 	//std::cout << std::endl;
+#define DEBUG_MM2METER 0
+#if DEBUG_MM2METER
+	float output_total = 0;
+	for(int i = 0; i < outSize.x * outSize.y; i++)
+	{
+		output_total += out[i];
+	}
+	debug(output_total);
+#endif
 	TOCK("mm2metersKernel", outSize.x * outSize.y);
+#endif
 }
 
 void halfSampleRobustImageKernel(float* out, const float* in, uint2 inSize,
 		const float e_d, const int r) {
+#if ENABLE_KFUSION
 	TICK();
 	uint2 outSize = make_uint2(inSize.x / 2, inSize.y / 2);
 	unsigned int y;
@@ -626,24 +761,47 @@ void halfSampleRobustImageKernel(float* out, const float* in, uint2 inSize,
 		}
 	}
 	TOCK("halfSampleRobustImageKernel", outSize.x * outSize.y);
+#endif
 }
 
+#define checkVolume() { float volumePreTotal = 0; for(uint x = 0; x < vol.size.x; x++) { for(uint y = 0; y < vol.size.y; y++) { for(uint z = 0; z < vol.size.z; z++) { volumePreTotal += vol[make_uint3(x, y, z)].x; volumePreTotal += vol[make_uint3(x, y, z)].y; } } } debug(volumePreTotal); }
 void integrateKernel(Volume vol, const float* depth, uint2 depthSize,
 		const Matrix4 invTrack, const Matrix4 K, const float mu,
 		const float maxweight) {
+#if ENABLE_KFUSION
 	TICK();
 	const float3 delta = rotate(invTrack,
 			make_float3(0, 0, vol.dim.z / vol.size.z));
 	const float3 cameraDelta = rotate(K, delta);
+#if 0
+	debug(delta.x);
+	debug(delta.y);
+	debug(delta.z);
+	debug(cameraDelta.x);
+	debug(cameraDelta.y);
+	debug(cameraDelta.z);
+#endif
 	unsigned int y;
 #pragma omp parallel for \
         shared(vol), private(y)
 	for (y = 0; y < vol.size.y; y++)
+	{
 		for (unsigned int x = 0; x < vol.size.x; x++) {
 
 			uint3 pix = make_uint3(x, y, 0); //pix.x = x;pix.y = y;
 			float3 pos = invTrack * vol.pos(pix);
 			float3 cameraX = K * pos;
+			/*
+			if(y == 0 && x == 0)
+			{
+				debug(pos.x);
+				debug(pos.y);
+				debug(pos.z);
+				debug(cameraX.x);
+				debug(cameraX.y);
+				debug(cameraX.z);
+			}
+			*/
 
 			for (pix.z = 0; pix.z < vol.size.z;
 					++pix.z, pos += delta, cameraX += cameraDelta) {
@@ -669,14 +827,19 @@ void integrateKernel(Volume vol, const float* depth, uint2 depthSize,
 							1.f);
 					data.y = fminf(data.y + 1, maxweight);
 					vol.set(pix, data);
+					//checkVolume();
 				}
 			}
 		}
+	}
+
 	TOCK("integrateKernel", vol.size.x * vol.size.y);
+#endif
 }
 float4 raycast(const Volume volume, const uint2 pos, const Matrix4 view,
 		const float nearPlane, const float farPlane, const float step,
 		const float largestep) {
+#if ENABLE_KFUSION
 
 	const float3 origin = get_translation(view);
 	const float3 direction = rotate(view, make_float3(pos.x, pos.y, 1.f));
@@ -724,11 +887,12 @@ float4 raycast(const Volume volume, const uint2 pos, const Matrix4 view,
 		}
 	}
 	return make_float4(0);
-
+#endif
 }
 void raycastKernel(float3* vertex, float3* normal, uint2 inputSize,
 		const Volume integration, const Matrix4 view, const float nearPlane,
 		const float farPlane, const float step, const float largestep) {
+#if ENABLE_KFUSION
 	TICK();
 	unsigned int y;
 #pragma omp parallel for \
@@ -757,12 +921,27 @@ void raycastKernel(float3* vertex, float3* normal, uint2 inputSize,
 			}
 		}
 	TOCK("raycastKernel", inputSize.x * inputSize.y);
+#endif
 }
 
 bool updatePoseKernel(Matrix4 & pose, const float * output,
 		float icp_threshold) {
+#if ENABLE_KFUSION
 	bool res = false;
 	TICK();
+
+	/*
+	float poseTotal = 0;
+	for(int i = 0; i < 4; i++)
+	{
+		poseTotal += pose.data[i].x;
+		poseTotal += pose.data[i].y;
+		poseTotal += pose.data[i].z;
+		poseTotal += pose.data[i].w;
+	}
+	debug(poseTotal);
+	*/
+
 	// Update the pose regarding the tracking result
 	TooN::Matrix<8, 32, const float, TooN::Reference::RowMajor> values(output);
 	TooN::Vector<6> x = solve(values[0].slice<1, 27>());
@@ -773,16 +952,32 @@ bool updatePoseKernel(Matrix4 & pose, const float * output,
 	if (norm(x) < icp_threshold)
 		res = true;
 
+	/*
+	poseTotal = 0;
+	for(int i = 0; i < 4; i++)
+	{
+		poseTotal += pose.data[i].x;
+		poseTotal += pose.data[i].y;
+		poseTotal += pose.data[i].z;
+		poseTotal += pose.data[i].w;
+	}
+	debug(poseTotal);
+	*/
+
 	TOCK("updatePoseKernel", 1);
 	return res;
+#endif
 }
 
+#define checkPose(mat, label) { float label = 0; for(size_t i = 0; i < 4; i++) { label += mat.data[i].x; label += mat.data[i].y; label += mat.data[i].z; label += mat.data[i].w; } debug(label); }
 bool checkPoseKernel(Matrix4 & pose, Matrix4 oldPose, const float * output,
 		uint2 imageSize, float track_threshold) {
+#if ENABLE_KFUSION
 
 	// Check the tracking result, and go back to the previous camera position if necessary
 
 	TooN::Matrix<8, 32, const float, TooN::Reference::RowMajor> values(output);
+	float poseTotal;
 
 	if ((std::sqrt(values(0, 0) / values(0, 28)) > 2e-2)
 			|| (values(0, 28) / (imageSize.x * imageSize.y) < track_threshold)) {
@@ -791,10 +986,11 @@ bool checkPoseKernel(Matrix4 & pose, Matrix4 oldPose, const float * output,
 	} else {
 		return true;
 	}
-
+#endif
 }
 
 void renderNormalKernel(uchar3* out, const float3* normal, uint2 normalSize) {
+#if ENABLE_KFUSION
 	TICK();
 	unsigned int y;
 #pragma omp parallel for \
@@ -812,10 +1008,11 @@ void renderNormalKernel(uchar3* out, const float3* normal, uint2 normalSize) {
 			}
 		}
 	TOCK("renderNormalKernel", normalSize.x * normalSize.y);
+#endif
 }
 
-void renderDepthKernel(uchar4* out, float * depth, uint2 depthSize,
-		const float nearPlane, const float farPlane) {
+void renderDepthKernel(uchar4* out, float * depth, uint2 depthSize, const float nearPlane, const float farPlane) {
+#if ENABLE_KFUSION
 	TICK();
 
 	float rangeScale = 1 / (farPlane - nearPlane);
@@ -842,10 +1039,12 @@ void renderDepthKernel(uchar4* out, float * depth, uint2 depthSize,
 		}
 	}
 	TOCK("renderDepthKernel", depthSize.x * depthSize.y);
+#endif
 }
 
 void renderTrackKernel(uchar4* out, const TrackData* data, uint2 outSize) {
 	TICK();
+#if ENABLE_KFUSION
 
 	unsigned int y;
 #pragma omp parallel for \
@@ -878,6 +1077,7 @@ void renderTrackKernel(uchar4* out, const TrackData* data, uint2 outSize) {
 			}
 		}
 	TOCK("renderTrackKernel", outSize.x * outSize.y);
+#endif
 }
 
 void renderVolumeKernel(uchar4* out, const uint2 depthSize, const Volume volume,
@@ -885,6 +1085,15 @@ void renderVolumeKernel(uchar4* out, const uint2 depthSize, const Volume volume,
 		const float step, const float largestep, const float3 light,
 		const float3 ambient) {
 	TICK();
+		int totalView = 0;
+		for(int i = 0; i < 4; i++)
+		{
+			totalView += view.data[i].x;
+			totalView += view.data[i].y;
+			totalView += view.data[i].z;
+			totalView += view.data[i].w;
+		}
+		debug(totalView);
 	unsigned int y;
 #pragma omp parallel for \
         shared(out), private(y)
@@ -916,22 +1125,51 @@ void renderVolumeKernel(uchar4* out, const uint2 depthSize, const Volume volume,
 }
 
 bool Kfusion::preprocessing(const ushort * inputDepth, const uint2 inputSize) {
+#if ENABLE_KFUSION
 
 	mm2metersKernel(floatDepth, computationSize, inputDepth, inputSize);
-	bilateralFilterKernel(ScaledDepth[0], floatDepth, computationSize, gaussian,
-			e_delta, radius);
-
+	bilateralFilterKernel(ScaledDepth[0], floatDepth, computationSize, gaussian, e_delta, radius);
+#if 0
+	float avgBilIn = 0, avgBilOut = 0;
+	for(size_t i = 0; i < computationSize.x * computationSize.y; i++)
+	{
+		avgBilIn += floatDepth[i];
+	}
+	for(size_t i = 0; i < computationSize.x * computationSize.y; i++)
+	{
+		avgBilOut += ScaledDepth[0][i];
+	}
+	debug(avgBilIn);
+	debug(avgBilOut);
+#endif
 	return true;
+#endif
 }
 
+static void show(TrackData &data)
+{
+	debug(data.result);
+	debug(data.error);
+	debug(data.J[0]);
+	debug(data.J[1]);
+	debug(data.J[2]);
+	debug(data.J[3]);
+	debug(data.J[4]);
+	debug(data.J[5]);
+}
+
+//#define checkPose(mat, label)
 bool Kfusion::tracking(float4 k, float icp_threshold, uint tracking_rate,
 		uint frame) {
+#if ENABLE_KFUSION
 
+	// TODO: How to do that with Drake?
 	if (frame % tracking_rate != 0)
 		return false;
 
 	// half sample the input depth maps into the pyramid levels
 	for (unsigned int i = 1; i < iterations.size(); ++i) {
+		float avgHalfIn = 0, avgHalfOut = 0;
 		halfSampleRobustImageKernel(ScaledDepth[i], ScaledDepth[i - 1],
 				make_uint2(computationSize.x / (int) pow(2, i - 1),
 						computationSize.y / (int) pow(2, i - 1)), e_delta * 3, 1);
@@ -940,70 +1178,378 @@ bool Kfusion::tracking(float4 k, float icp_threshold, uint tracking_rate,
 	// prepare the 3D information from the input depth maps
 	uint2 localimagesize = computationSize;
 	for (unsigned int i = 0; i < iterations.size(); ++i) {
+#define DEBUG_VERTEX2NORMAL 0
 		Matrix4 invK = getInverseCameraMatrix(k / float(1 << i));
-		depth2vertexKernel(inputVertex[i], ScaledDepth[i], localimagesize,
-				invK);
+		depth2vertexKernel(inputVertex[i], ScaledDepth[i], localimagesize, invK);
 		vertex2normalKernel(inputNormal[i], inputVertex[i], localimagesize);
+#if DEBUG_VERTEX2NORMAL || DEBUG_DEPTH2VERTEX
+		size_t ii;
+		
+		for(ii = 0; ii < localimagesize.x * localimagesize.y; ii++)
+		{
+		}
+#endif
+#if DEBUG_VERTEX2NORMAL || DEBUG_DEPTH2VERTEX
+#endif
 		localimagesize = make_uint2(localimagesize.x / 2, localimagesize.y / 2);
 	}
 
 	oldPose = pose;
+	//checkPose(raycastPose, raycastPoseTotal);
+	//checkPose(pose, poseTotal);
 	const Matrix4 projectReference = getCameraMatrix(k) * inverse(raycastPose);
+#if 0
+	float projectReferenceTotal;
+	const Matrix4 &ref = projectReference;
+	for(size_t i = 0; i < 4; i++)
+	{
+		/*
+		debug(4 * i);
+		debug(raycastPose.data[i].x);
+		debug(projectReference.data[i].x);
+		debug(4 * i + 1);
+		debug(raycastPose.data[i].y);
+		debug(projectReference.data[i].y);
+		debug(4 * i + 2);
+		debug(raycastPose.data[i].z);
+		debug(projectReference.data[i].z);
+		debug(4 * i + 3);
+		debug(raycastPose.data[i].w);
+		debug(projectReference.data[i].w);
+		*/
+		projectReferenceTotal += ref.data[i].x;
+		projectReferenceTotal += ref.data[i].y;
+		projectReferenceTotal += ref.data[i].z;
+		projectReferenceTotal += ref.data[i].w;
+	}
+	debug(projectReferenceTotal);
+#endif
 
+#define DEBUG_TRACKING 0
+#if DEBUG_TRACKING
+	float vertex_total = 0, normal_total = 0, tracking_total = 0, reduce_total = 0, ref_vertex_total = 0, ref_normal_total = 0;
+	float pose_total = 0, projectReference_total = 0;
+#endif
 	for (int level = iterations.size() - 1; level >= 0; --level) {
 		uint2 localimagesize = make_uint2(
 				computationSize.x / (int) pow(2, level),
 				computationSize.y / (int) pow(2, level));
 		for (int i = 0; i < iterations[level]; ++i) {
-
 			trackKernel(trackingResult, inputVertex[level], inputNormal[level],
-					localimagesize, vertex, normal, computationSize, pose,
-					projectReference, dist_threshold, normal_threshold);
+				localimagesize, vertex, normal, computationSize, pose,
+				projectReference, dist_threshold, normal_threshold);
 
-			reduceKernel(reductionoutput, trackingResult, computationSize,
-					localimagesize);
+			reduceKernel(reductionoutput, trackingResult, computationSize, localimagesize);
+#if DEBUG_TRACKING
+			static unsigned int track_running = 0;
+			track_running++;
+			//debug(track_running);
+			vertex_total = 0;
+			normal_total = 0;
+			tracking_total = 0;
+			reduce_total = 0;
+			ref_vertex_total = 0;
+			ref_normal_total = 0;
+			pose_total = 0;
+			projectReference_total = 0;
+			for(size_t ii = 0; ii < 4; ii++)
+			{
+				pose_total += pose.data[ii].x;
+				pose_total += pose.data[ii].y;
+				pose_total += pose.data[ii].z;
+				pose_total += pose.data[ii].w;
+				projectReference_total += projectReference.data[ii].x;
+				projectReference_total += projectReference.data[ii].y;
+				projectReference_total += projectReference.data[ii].z;
+				projectReference_total += projectReference.data[ii].w;
+			}
+			for(size_t ii = 0; ii < localimagesize.x * localimagesize.y; ii++)
+			{
+				vertex_total += inputVertex[level][ii].x;
+				vertex_total += inputVertex[level][ii].y;
+				vertex_total += inputVertex[level][ii].z;
 
+				normal_total += inputNormal[level][ii].x;
+				normal_total += inputNormal[level][ii].y;
+				normal_total += inputNormal[level][ii].z;
+
+				ref_vertex_total += vertex[ii].x;
+				ref_vertex_total += vertex[ii].y;
+				ref_vertex_total += vertex[ii].z;
+
+				ref_normal_total += normal[ii].x;
+				ref_normal_total += normal[ii].y;
+				ref_normal_total += normal[ii].z;
+			}
+			
+			size_t size = 0;
+			for(size_t ii = 0; ii < localimagesize.y; ii++)
+			{
+				for(size_t jj = 0; jj < localimagesize.x; jj++)
+				{
+					size++;
+					size_t index = jj + ii * computationSize.x;
+					tracking_total += trackingResult[index].result;
+					tracking_total += trackingResult[index].error;
+					tracking_total += trackingResult[index].J[0];
+					tracking_total += trackingResult[index].J[1];
+					tracking_total += trackingResult[index].J[2];
+					tracking_total += trackingResult[index].J[3];
+					tracking_total += trackingResult[index].J[4];
+					tracking_total += trackingResult[index].J[5];
+					/*
+					debug(trackingResult[ii].result);
+					debug(trackingResult[ii].error);
+					debug(trackingResult[ii].J[0]);
+					debug(trackingResult[ii].J[1]);
+					debug(trackingResult[ii].J[2]);
+					debug(trackingResult[ii].J[3]);
+					debug(trackingResult[ii].J[4]);
+					debug(trackingResult[ii].J[5]);
+					*/
+				}
+			}
+			for(size_t ii = 0; ii < 8 * 32; ii++)
+			{
+				reduce_total += reductionoutput[ii];
+			}
+#endif
+#if DEBUG_TRACKING
+#define pose_min (pose_total >= 9.184000015)
+#define pose_max (pose_total < 9.184000016)
+#define prt_max (projectReference_total <= -529.771240234)
+#define prt_min (projectReference_total > -529.771240235)
+			//int condition = localimagesize.x == 320 && localimagesize.y == 240 && pose_min && pose_max && prt_max && prt_min;
+			//int condition = localimagesize.x == 320 && localimagesize.y == 240; // && pose_min && pose_max && prt_max && prt_min;
+			int condition = pose_min && pose_max && prt_max && prt_min || 1;
+			if(condition)
+			{
+			debug(localimagesize.x);
+			debug(localimagesize.y);
+			debug(computationSize.x);
+			debug(computationSize.y);
+			debug(dist_threshold);
+			debug(normal_threshold);
+			debug(pose_total);
+			debug(projectReference_total);
+			debug(vertex_total);
+			debug(normal_total);
+			debug(ref_vertex_total);
+			debug(ref_normal_total);
+			debug(tracking_total);
+			debug(reduce_total);
+			}
+			else
+			{
+				/*
+				debug(pose_total);
+				debug(projectReference_total);
+				debug(pose_min);
+				debug(pose_max);
+				debug(prt_max);
+				debug(prt_min);
+				debug("#####################");
+				*/
+			}
+#endif
+
+#define DEBUG_UPDATE 0
+#if DEBUG_TRACKING || DEBUG_UPDATE
+#if DEBUG_TRACKING
+			if(condition)
+			{
+#endif
+				checkPose(pose, poseTotal);
+#if DEBUG_TRACKING
+			}
+#endif
+#endif
+
+#if DEBUG_UPDATE
+			float reductionTotal = 0;
+			for(int ii = 0; ii < 8 * 32; ii++)
+			{
+				reductionTotal += reductionoutput[ii];
+			}
+			debug(reductionTotal);
+#endif
 			if (updatePoseKernel(pose, reductionoutput, icp_threshold))
+			{
+#if DEBUG_TRACKING || DEBUG_UPDATE
+#if DEBUG_TRACKING
+			if(condition)
+			{
+#endif
+				checkPose(pose, poseTotal);
+				debug("####################################");
+#if DEBUG_TRACKING
+			}
+#endif
+#endif
 				break;
-
+			}
+#if DEBUG_TRACKING || DEBUG_UPDATE
+#if DEBUG_TRACKING
+			if(condition)
+			{
+#endif
+				checkPose(pose, poseTotal);
+				debug("####################################");
+#if DEBUG_TRACKING
+			}
+#endif
+#endif
 		}
 	}
-	return checkPoseKernel(pose, oldPose, reductionoutput, computationSize,
-			track_threshold);
 
+	bool res = checkPoseKernel(pose, oldPose, reductionoutput, computationSize, track_threshold);
+	
+	return res;
+#endif
 }
 
 bool Kfusion::raycasting(float4 k, float mu, uint frame) {
+#if ENABLE_KFUSION
 
 	bool doRaycast = false;
 
 	if (frame > 2) {
+		/*
+		debug("Going for raycast");
+		static int Running_Raycast = 0;
+		Running_Raycast++;
+		debug(Running_Raycast);
+		*/
 		raycastPose = pose;
 		raycastKernel(vertex, normal, computationSize, volume,
 				raycastPose * getInverseCameraMatrix(k), nearPlane, farPlane,
 				step, 0.75f * mu);
+		size_t i;
+		float vertexTotal = 0, normalTotal = 0;
+#define DEBUG_RAYCAST 0
+#if DEBUG_RAYCAST
+		for(i = 0; i < computationSize.x * computationSize.y; i++)
+		{
+			vertexTotal += vertex[i].x;
+			vertexTotal += vertex[i].y;
+			vertexTotal += vertex[i].z;
+			normalTotal += normal[i].x;
+			normalTotal += normal[i].y;
+			normalTotal += normal[i].z;
+		}
+		debug(vertexTotal);
+		debug(normalTotal);
+#endif
 	}
 
 	return doRaycast;
-
+#endif
 }
 
 bool Kfusion::integration(float4 k, uint integration_rate, float mu,
 		uint frame) {
-
+#if ENABLE_KFUSION
+#define DEBUG_CHECK 0
+#if DEBUG_CHECK
+	float poseTotal = 0, oldPoseTotal = 0, reductionoutputTotal = 0;
+	for(int i = 0; i < 4; i++)
+	{
+		poseTotal += pose.data[i].x;
+		poseTotal += pose.data[i].y;
+		poseTotal += pose.data[i].z;
+		poseTotal += pose.data[i].w;
+		oldPoseTotal += oldPose.data[i].x;
+		oldPoseTotal += oldPose.data[i].y;
+		oldPoseTotal += oldPose.data[i].z;
+		oldPoseTotal += oldPose.data[i].w;
+	}
+	debug(poseTotal);
+	debug(oldPoseTotal);
+	for(int i = 0; i < 8 * 32; i++)
+	{
+		reductionoutputTotal += reductionoutput[i];
+	}
+	debug(reductionoutputTotal);
+	debug(computationSize.x);
+	debug(computationSize.y);
+	debug(track_threshold);
+#endif
 	bool doIntegrate = checkPoseKernel(pose, oldPose, reductionoutput,
 			computationSize, track_threshold);
 
+	//debug(doIntegrate);
+	//debug(((frame % integration_rate) == 0));
 	if ((doIntegrate && ((frame % integration_rate) == 0)) || (frame <= 3)) {
-		integrateKernel(volume, floatDepth, computationSize, inverse(pose),
-				getCameraMatrix(k), mu, maxweight);
+#if 0
+	debug(computationSize.x);
+	debug(computationSize.y);
+	float volumePreTotal = 0;
+	for(uint x = 0; x < volume.size.x; x++)
+	{
+		for(uint y = 0; y < volume.size.y; y++)
+		{
+			for(uint z = 0; z < volume.size.z; z++)
+			{
+				volumePreTotal += volume[make_uint3(x, y, z)].x;
+				volumePreTotal += volume[make_uint3(x, y, z)].y;
+			}
+		}
+	}
+	debug(volumePreTotal);
+	float depthTotal = 0;
+	for(size_t ii = 0; ii < computationSize.x * computationSize.y; ii++)
+	{
+		depthTotal += floatDepth[ii];
+	}
+	debug(depthTotal);
+	float viewTotal = 0, cameraTotal = 0, init_cameraTotal = 0;
+	Matrix4 view = inverse(pose);
+	Matrix4 camera = getCameraMatrix(k);
+	init_cameraTotal += k.x;
+	init_cameraTotal += k.y;
+	init_cameraTotal += k.z;
+	init_cameraTotal += k.w;
+	for(size_t ii = 0; ii < 4; ii++)
+	{
+		viewTotal += view.data[ii].x;
+		viewTotal += view.data[ii].y;
+		viewTotal += view.data[ii].z;
+		viewTotal += view.data[ii].w;
+		cameraTotal += camera.data[ii].x;
+		cameraTotal += camera.data[ii].y;
+		cameraTotal += camera.data[ii].z;
+		cameraTotal += camera.data[ii].w;
+	}
+	debug(viewTotal);
+	debug(init_cameraTotal);
+	debug(cameraTotal);
+	debug(mu);
+	debug(maxweight);
+#endif
+	integrateKernel(volume, floatDepth, computationSize, inverse(pose), getCameraMatrix(k), mu, maxweight);
+#define DEBUG_INTEGRATION 0
+#if DEBUG_INTEGRATION
+	float volumePostTotal = 0;
+	for(uint x = 0; x < volume.size.x; x++)
+	{
+		for(uint y = 0; y < volume.size.y; y++)
+		{
+			for(uint z = 0; z < volume.size.z; z++)
+			{
+				volumePostTotal += volume[make_uint3(x, y, z)].x;
+				volumePostTotal += volume[make_uint3(x, y, z)].y;
+			}
+		}
+	}
+	debug(volumePostTotal);
+#endif
 		doIntegrate = true;
 	} else {
 		doIntegrate = false;
 	}
 
 	return doIntegrate;
-
+#endif
 }
 
 void Kfusion::dumpVolume(const char *filename) {
@@ -1034,10 +1580,14 @@ void Kfusion::dumpVolume(const char *filename) {
 
 void Kfusion::renderVolume(uchar4 * out, uint2 outputSize, int frame,
 		int raycast_rendering_rate, float4 k, float largestep) {
+#if ENABLE_KFUSION
 	if (frame % raycast_rendering_rate == 0)
+	{
 		renderVolumeKernel(out, outputSize, volume,
 				*(this->viewPose) * getInverseCameraMatrix(k), nearPlane,
 				farPlane * 2.0f, step, largestep, light, ambient);
+	}
+#endif
 }
 
 void Kfusion::renderTrack(uchar4 * out, uint2 outputSize) {

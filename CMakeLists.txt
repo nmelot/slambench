@@ -116,7 +116,9 @@ endif(APPLE)
     include_directories(${Qt5PrintSupport_INCLUDE_DIRS})
     include_directories(${Qt5Gui_INCLUDE_DIRS})
     
+    SET_TARGET_PROPERTIES(${appname}-qt-${version} PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
     SET_TARGET_PROPERTIES(${appname}-qt-${version} PROPERTIES COMPILE_FLAGS "${main_common_compile_flags} -std=c++0x  -D__QT__")
+    SET_TARGET_PROPERTIES(${appname}-qt-${version} PROPERTIES INSTALL_RPATH "${${appname}_${version}_rpath}")
 
 if(APPLE)
     target_link_libraries(${appname}-qt-${version} Qt5::Core Qt5::Gui Qt5::Widgets Qt5::OpenGL Qt5::PrintSupport 
