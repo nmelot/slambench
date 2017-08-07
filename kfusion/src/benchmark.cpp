@@ -152,6 +152,7 @@ int main(int argc, char ** argv) {
 
 		timings[6] = tock();
 
+		/*
 		*logstream << frame << "\t" << timings[1] - timings[0] << "\t" //  acquisition
 				<< timings[2] - timings[1] << "\t"     //  preprocessing
 				<< timings[3] - timings[2] << "\t"     //  tracking
@@ -163,6 +164,7 @@ int main(int argc, char ** argv) {
 				<< xt << "\t" << yt << "\t" << zt << "\t"     //  X,Y,Z
 				<< tracked << "        \t" << integrated // tracked and integrated flags
 				<< std::endl;
+		*/
 
 		frame++;
 

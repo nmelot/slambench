@@ -1085,6 +1085,7 @@ void renderVolumeKernel(uchar4* out, const uint2 depthSize, const Volume volume,
 		const float step, const float largestep, const float3 light,
 		const float3 ambient) {
 	TICK();
+		/*
 		int totalView = 0;
 		for(int i = 0; i < 4; i++)
 		{
@@ -1093,7 +1094,8 @@ void renderVolumeKernel(uchar4* out, const uint2 depthSize, const Volume volume,
 			totalView += view.data[i].z;
 			totalView += view.data[i].w;
 		}
-		debug(totalView);
+		//debug(totalView);
+		*/
 	unsigned int y;
 #pragma omp parallel for \
         shared(out), private(y)
@@ -1414,19 +1416,18 @@ bool Kfusion::raycasting(float4 k, float mu, uint frame) {
 	bool doRaycast = false;
 
 	if (frame > 2) {
-		/*
-		debug("Going for raycast");
+		//debug("Going for raycast");
 		static int Running_Raycast = 0;
 		Running_Raycast++;
 		debug(Running_Raycast);
-		*/
+
 		raycastPose = pose;
 		raycastKernel(vertex, normal, computationSize, volume,
 				raycastPose * getInverseCameraMatrix(k), nearPlane, farPlane,
 				step, 0.75f * mu);
 		size_t i;
 		float vertexTotal = 0, normalTotal = 0;
-#define DEBUG_RAYCAST 0
+#define DEBUG_RAYCAST 1
 #if DEBUG_RAYCAST
 		for(i = 0; i < computationSize.x * computationSize.y; i++)
 		{

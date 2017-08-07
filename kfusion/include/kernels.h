@@ -189,7 +189,7 @@ public:
 			totalPose += pose.data[i].z;
 			totalPose += pose.data[i].w;
 		}
-		debug(totalPose);
+		//debug(totalPose);
 		return pose;
 	}
 	void setViewPose(Matrix4 *value = NULL) {
@@ -197,7 +197,7 @@ public:
 			viewPose = &pose;
 		else
 			viewPose = value;
-		debug((void*)viewPose);
+		//debug((void*)viewPose);
 		float totalViewPose = 0;
 		for(int i = 0; i < 16; i++)
 		{
@@ -206,7 +206,7 @@ public:
 			totalViewPose += viewPose->data[i].z;
 			totalViewPose += viewPose->data[i].w;
 		}
-		debug(totalViewPose);
+		//debug(totalViewPose);
 	}
 	Matrix4 *getViewPose() {
 		return (viewPose);
