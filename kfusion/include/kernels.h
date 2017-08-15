@@ -181,15 +181,6 @@ public:
 	void renderTrack(uchar4 * out, const uint2 outputSize);
 	void renderDepth(uchar4* out, uint2 outputSize);
 	Matrix4 getPose() {
-		float totalPose = 0;
-		for(int i = 0; i < 16; i++)
-		{
-			totalPose += pose.data[i].x;
-			totalPose += pose.data[i].y;
-			totalPose += pose.data[i].z;
-			totalPose += pose.data[i].w;
-		}
-		//debug(totalPose);
 		return pose;
 	}
 	void setViewPose(Matrix4 *value = NULL) {
@@ -197,16 +188,6 @@ public:
 			viewPose = &pose;
 		else
 			viewPose = value;
-		//debug((void*)viewPose);
-		float totalViewPose = 0;
-		for(int i = 0; i < 16; i++)
-		{
-			totalViewPose += viewPose->data[i].x;
-			totalViewPose += viewPose->data[i].y;
-			totalViewPose += viewPose->data[i].z;
-			totalViewPose += viewPose->data[i].w;
-		}
-		//debug(totalViewPose);
 	}
 	Matrix4 *getViewPose() {
 		return (viewPose);

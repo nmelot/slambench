@@ -1170,30 +1170,98 @@ bool Kfusion::tracking(float4 k, float icp_threshold, uint tracking_rate,
 		return false;
 
 	// half sample the input depth maps into the pyramid levels
+	float totalDepth = 0;
+	static size_t running_halfSample = 0;
+	for(size_t j = 0; j < computationSize.x * computationSize.y; j++)
+	{
+		totalDepth += ScaledDepth[0][j];
+	}
+	/*
+	running_halfSample++;
+#define halfSample_condition ((running_halfSample == 22) || (running_halfSample == 27))
+	if(halfSample_condition)
+	{
+		debug(running_halfSample);
+		debug(frame);
+		debug(0);
+		debug(totalDepth);
+		debug("----------------------");
+	}
+	*/
+	
 	for (unsigned int i = 1; i < iterations.size(); ++i) {
 		float avgHalfIn = 0, avgHalfOut = 0;
-		halfSampleRobustImageKernel(ScaledDepth[i], ScaledDepth[i - 1],
-				make_uint2(computationSize.x / (int) pow(2, i - 1),
-						computationSize.y / (int) pow(2, i - 1)), e_delta * 3, 1);
+		uint2 size = make_uint2(computationSize.x / (int) pow(2, i - 1), computationSize.y / (int) pow(2, i - 1));
+		halfSampleRobustImageKernel(ScaledDepth[i], ScaledDepth[i - 1], size, e_delta * 3, 1);
+		totalDepth = 0;
+		for(size_t j = 0; j < size.x * size.y / 4; j++)
+		{
+			totalDepth += ScaledDepth[i][j];
+		}
+		/*
+		running_halfSample++;
+		if(halfSample_condition)
+		{
+			debug(running_halfSample);
+			//debug(iterations.size() - 1 - i);
+			debug(frame);
+			debug(i);
+			debug(totalDepth);
+			debug("----------------------");
+		}
+		*/
 	}
 
 	// prepare the 3D information from the input depth maps
 	uint2 localimagesize = computationSize;
-	for (unsigned int i = 0; i < iterations.size(); ++i) {
+	// TODO: restore
+	for (unsigned int i = 0; i < iterations.size(); ++i)
+	// This is only to compare variables to drake implementation
+	//for (int i = iterations.size() - 1; i >= 0; --i) 
+	{
+		// This is only to compare variables to drake implementation
+#define INVERT_PREPROCESSING 0
+#if INVERT_PREPROCESSING
+		localimagesize = make_uint2(computationSize.x / (int)pow(2, iterations.size() - 1 - i), computationSize.y / (int)pow(2, iterations.size() - 1 - i));
+#endif
 #define DEBUG_VERTEX2NORMAL 0
-		Matrix4 invK = getInverseCameraMatrix(k / float(1 << i));
-		depth2vertexKernel(inputVertex[i], ScaledDepth[i], localimagesize, invK);
-		vertex2normalKernel(inputNormal[i], inputVertex[i], localimagesize);
+#if INVERT_PREPROCESSING
+		unsigned int ii = iterations.size() - 1 - i;
+#else
+		unsigned int ii = i;
+#endif
+		Matrix4 invK = getInverseCameraMatrix(k / float(1 << ii));
+		static int running_depth2vertex = 0;
+		running_depth2vertex++;
+		depth2vertexKernel(inputVertex[ii], ScaledDepth[ii], localimagesize, invK);
+		vertex2normalKernel(inputNormal[ii], inputVertex[ii], localimagesize);
 #if DEBUG_VERTEX2NORMAL || DEBUG_DEPTH2VERTEX
-		size_t ii;
-		
-		for(ii = 0; ii < localimagesize.x * localimagesize.y; ii++)
+		float vertexTotal = 0, inputTotal = 0;
+		for(size_t j = 0; j < localimagesize.x * localimagesize.y; j++)
 		{
+			inputTotal += ScaledDepth[ii][j];
+			vertexTotal += inputVertex[ii][j].x;
+			vertexTotal += inputVertex[ii][j].y;
+			vertexTotal += inputVertex[ii][j].z;
+		}
+		if(running_depth2vertex == 24 || running_depth2vertex == 25 || 0)
+		{
+			debug(running_depth2vertex);
+			debug(ii);
+			debug(frame);
+			debug(inputTotal);
+			debug(vertexTotal);
+			debug(localimagesize.x);
+			debug(localimagesize.y);
+			debug("-------------------------------");
 		}
 #endif
 #if DEBUG_VERTEX2NORMAL || DEBUG_DEPTH2VERTEX
 #endif
+		// TODO: restore
+#if !INVERT_PREPROCESSING
 		localimagesize = make_uint2(localimagesize.x / 2, localimagesize.y / 2);
+#endif
 	}
 
 	oldPose = pose;
@@ -1229,7 +1297,7 @@ bool Kfusion::tracking(float4 k, float icp_threshold, uint tracking_rate,
 
 #define DEBUG_TRACKING 0
 #if DEBUG_TRACKING
-	float vertex_total = 0, normal_total = 0, tracking_total = 0, reduce_total = 0, ref_vertex_total = 0, ref_normal_total = 0;
+	float vertex_total = 0, normal_total = 0, tracking_total = 0, reduce_total = 0, ref_vertex_total = 0, ref_normal_total = 0, depth_total = 0;
 	float pose_total = 0, projectReference_total = 0;
 #endif
 	for (int level = iterations.size() - 1; level >= 0; --level) {
@@ -1245,7 +1313,6 @@ bool Kfusion::tracking(float4 k, float icp_threshold, uint tracking_rate,
 #if DEBUG_TRACKING
 			static unsigned int track_running = 0;
 			track_running++;
-			//debug(track_running);
 			vertex_total = 0;
 			normal_total = 0;
 			tracking_total = 0;
@@ -1267,6 +1334,7 @@ bool Kfusion::tracking(float4 k, float icp_threshold, uint tracking_rate,
 			}
 			for(size_t ii = 0; ii < localimagesize.x * localimagesize.y; ii++)
 			{
+				depth_total += ScaledDepth[level][ii];
 				vertex_total += inputVertex[level][ii].x;
 				vertex_total += inputVertex[level][ii].y;
 				vertex_total += inputVertex[level][ii].z;
@@ -1299,7 +1367,13 @@ bool Kfusion::tracking(float4 k, float icp_threshold, uint tracking_rate,
 					tracking_total += trackingResult[index].J[3];
 					tracking_total += trackingResult[index].J[4];
 					tracking_total += trackingResult[index].J[5];
-					/*
+#if 0
+					if(trackingResult[index].result != -4)
+					{
+						debug(index);
+					}
+#endif
+#if 0
 					debug(trackingResult[ii].result);
 					debug(trackingResult[ii].error);
 					debug(trackingResult[ii].J[0]);
@@ -1308,7 +1382,7 @@ bool Kfusion::tracking(float4 k, float icp_threshold, uint tracking_rate,
 					debug(trackingResult[ii].J[3]);
 					debug(trackingResult[ii].J[4]);
 					debug(trackingResult[ii].J[5]);
-					*/
+#endif
 				}
 			}
 			for(size_t ii = 0; ii < 8 * 32; ii++)
@@ -1323,9 +1397,13 @@ bool Kfusion::tracking(float4 k, float icp_threshold, uint tracking_rate,
 #define prt_min (projectReference_total > -529.771240235)
 			//int condition = localimagesize.x == 320 && localimagesize.y == 240 && pose_min && pose_max && prt_max && prt_min;
 			//int condition = localimagesize.x == 320 && localimagesize.y == 240; // && pose_min && pose_max && prt_max && prt_min;
-			int condition = pose_min && pose_max && prt_max && prt_min || 1;
-			if(condition)
+			int condition = ((track_running >= 12) && (track_running <= 12)) || 0;
+			//int condition = ((track_running >= 1) && (track_running <= 1)) || 0;
+			//if(condition)
 			{
+			debug(track_running);
+			debug(frame);
+			debug(level);
 			debug(localimagesize.x);
 			debug(localimagesize.y);
 			debug(computationSize.x);
@@ -1334,6 +1412,7 @@ bool Kfusion::tracking(float4 k, float icp_threshold, uint tracking_rate,
 			debug(normal_threshold);
 			debug(pose_total);
 			debug(projectReference_total);
+			debug(depth_total);
 			debug(vertex_total);
 			debug(normal_total);
 			debug(ref_vertex_total);
@@ -1341,7 +1420,7 @@ bool Kfusion::tracking(float4 k, float icp_threshold, uint tracking_rate,
 			debug(tracking_total);
 			debug(reduce_total);
 			}
-			else
+			//else
 			{
 				/*
 				debug(pose_total);
@@ -1416,20 +1495,20 @@ bool Kfusion::raycasting(float4 k, float mu, uint frame) {
 	bool doRaycast = false;
 
 	if (frame > 2) {
+#define DEBUG_RAYCAST 1
+#if DEBUG_RAYCAST
 		//debug("Going for raycast");
 		static int Running_Raycast = 0;
 		Running_Raycast++;
-		debug(Running_Raycast);
+#endif
 
 		raycastPose = pose;
-		raycastKernel(vertex, normal, computationSize, volume,
-				raycastPose * getInverseCameraMatrix(k), nearPlane, farPlane,
-				step, 0.75f * mu);
+		Matrix4 view = raycastPose * getInverseCameraMatrix(k);
+		raycastKernel(vertex, normal, computationSize, volume, view, nearPlane, farPlane, step, 0.75f * mu);
 		size_t i;
 		float vertexTotal = 0, normalTotal = 0;
-#define DEBUG_RAYCAST 1
 #if DEBUG_RAYCAST
-		for(i = 0; i < computationSize.x * computationSize.y; i++)
+		for(i = 0; i < computationSize.x * computationSize.y / 256; i++)
 		{
 			vertexTotal += vertex[i].x;
 			vertexTotal += vertex[i].y;
@@ -1438,8 +1517,27 @@ bool Kfusion::raycasting(float4 k, float mu, uint frame) {
 			normalTotal += normal[i].y;
 			normalTotal += normal[i].z;
 		}
+		float totalView = 0;
+		for(size_t i = 0; i < 4; i++)
+		{
+			totalView += view.data[i].x;
+			totalView += view.data[i].y;
+			totalView += view.data[i].z;
+			totalView += view.data[i].w;
+		}
+		if(Running_Raycast == 1)
+		{
+		debug(Running_Raycast);
+		debug(totalView);
+		debug(nearPlane);
+		debug(farPlane);
+		debug(step)
+		debug(mu);
+		debug(computationSize.x);
+		debug(computationSize.y);
 		debug(vertexTotal);
 		debug(normalTotal);
+		}
 #endif
 	}
 
