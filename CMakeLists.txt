@@ -69,7 +69,7 @@ endif(OPENNI2_FOUND)
                              PROPERTIES INSTALL_RPATH "${${appname}_${version}_rpath}")
 
 
-
+if (BUILD_EVERYTHING)
 #  ------ MAIN --------
   if (GLUT_FOUND)
     add_executable(${appname}-main-${version} src/mainQt.cpp src/PowerMonitor.cpp src/reader.cpp)
@@ -88,6 +88,7 @@ else(APPLE)
     target_link_libraries(${appname}-main-${version} ${appname}-${version} ${GLUT_LIBRARIES} ${OPENGL_LIBRARIES}  ${main_common_libraries} GL )
 endif(APPLE)
   endif(GLUT_FOUND)
+endif(BUILD_EVERYTHING)
   #  ------ QT --------
   if (Qt5OpenGL_FOUND)
 

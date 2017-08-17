@@ -36,22 +36,6 @@
 
 #endif
 
-#ifdef debug
-#undef debug
-#endif
-#ifdef string
-#undef string
-#endif
-
-#define DEBUG 1
-
-#if DEBUG != 0
-#define string(a) #a
-#define debug(var) std::cout << "[" << __FILE__ << ":" << __FUN ## CTION__ << ":" << __LINE__ << "] " << string(var) << " = \"" << (var) << "\"" << std::endl;
-#else
-#define debug(var)
-#endif
-
 float *gaussian;
 
 // inter-frame
@@ -633,18 +617,6 @@ void trackKernel(TrackData* output, const float3* inVertex,
 					- projectedVertex;
 			const float3 projectedNormal = rotate(Ttrack,
 					inNormal[pixel.x + pixel.y * inSize.x]);
-			if(pixelx == 0 && pixely == 0 && 0)
-			{
-				debug(inNormal[pixel.x + pixel.y * inSize.x].x);
-				debug(inNormal[pixel.x + pixel.y * inSize.x].y);
-				debug(inNormal[pixel.x + pixel.y * inSize.x].z);
-				debug(diff.x);
-				debug(diff.y);
-				debug(diff.z);
-				debug(projectedNormal.x);
-				debug(projectedNormal.y);
-				debug(projectedNormal.z);
-			}
 
 			if (length(diff) > dist_threshold) {
 				row.result = -4;
@@ -666,14 +638,6 @@ void trackKernel(TrackData* output, const float3* inVertex,
 			mok++;
 		}
 	}
-/*
-	debug(mone);
-	debug(mtwo);
-	debug(mthree);
-	debug(mfour);
-	debug(mfive);
-	debug(mok);
-*/
 	TOCK("trackKernel", inSize.x * inSize.y);
 #endif
 }
@@ -712,15 +676,6 @@ void mm2metersKernel(float * out, uint2 outSize, const ushort * in,
 			*/
 		}
 	//std::cout << std::endl;
-#define DEBUG_MM2METER 0
-#if DEBUG_MM2METER
-	float output_total = 0;
-	for(int i = 0; i < outSize.x * outSize.y; i++)
-	{
-		output_total += out[i];
-	}
-	debug(output_total);
-#endif
 	TOCK("mm2metersKernel", outSize.x * outSize.y);
 #endif
 }
@@ -773,14 +728,6 @@ void integrateKernel(Volume vol, const float* depth, uint2 depthSize,
 	const float3 delta = rotate(invTrack,
 			make_float3(0, 0, vol.dim.z / vol.size.z));
 	const float3 cameraDelta = rotate(K, delta);
-#if 0
-	debug(delta.x);
-	debug(delta.y);
-	debug(delta.z);
-	debug(cameraDelta.x);
-	debug(cameraDelta.y);
-	debug(cameraDelta.z);
-#endif
 	unsigned int y;
 #pragma omp parallel for \
         shared(vol), private(y)
@@ -791,17 +738,6 @@ void integrateKernel(Volume vol, const float* depth, uint2 depthSize,
 			uint3 pix = make_uint3(x, y, 0); //pix.x = x;pix.y = y;
 			float3 pos = invTrack * vol.pos(pix);
 			float3 cameraX = K * pos;
-			/*
-			if(y == 0 && x == 0)
-			{
-				debug(pos.x);
-				debug(pos.y);
-				debug(pos.z);
-				debug(cameraX.x);
-				debug(cameraX.y);
-				debug(cameraX.z);
-			}
-			*/
 
 			for (pix.z = 0; pix.z < vol.size.z;
 					++pix.z, pos += delta, cameraX += cameraDelta) {
@@ -827,7 +763,6 @@ void integrateKernel(Volume vol, const float* depth, uint2 depthSize,
 							1.f);
 					data.y = fminf(data.y + 1, maxweight);
 					vol.set(pix, data);
-					//checkVolume();
 				}
 			}
 		}
@@ -930,18 +865,6 @@ bool updatePoseKernel(Matrix4 & pose, const float * output,
 	bool res = false;
 	TICK();
 
-	/*
-	float poseTotal = 0;
-	for(int i = 0; i < 4; i++)
-	{
-		poseTotal += pose.data[i].x;
-		poseTotal += pose.data[i].y;
-		poseTotal += pose.data[i].z;
-		poseTotal += pose.data[i].w;
-	}
-	debug(poseTotal);
-	*/
-
 	// Update the pose regarding the tracking result
 	TooN::Matrix<8, 32, const float, TooN::Reference::RowMajor> values(output);
 	TooN::Vector<6> x = solve(values[0].slice<1, 27>());
@@ -951,18 +874,6 @@ bool updatePoseKernel(Matrix4 & pose, const float * output,
 	// Return validity test result of the tracking
 	if (norm(x) < icp_threshold)
 		res = true;
-
-	/*
-	poseTotal = 0;
-	for(int i = 0; i < 4; i++)
-	{
-		poseTotal += pose.data[i].x;
-		poseTotal += pose.data[i].y;
-		poseTotal += pose.data[i].z;
-		poseTotal += pose.data[i].w;
-	}
-	debug(poseTotal);
-	*/
 
 	TOCK("updatePoseKernel", 1);
 	return res;
@@ -1085,17 +996,6 @@ void renderVolumeKernel(uchar4* out, const uint2 depthSize, const Volume volume,
 		const float step, const float largestep, const float3 light,
 		const float3 ambient) {
 	TICK();
-		/*
-		int totalView = 0;
-		for(int i = 0; i < 4; i++)
-		{
-			totalView += view.data[i].x;
-			totalView += view.data[i].y;
-			totalView += view.data[i].z;
-			totalView += view.data[i].w;
-		}
-		//debug(totalView);
-		*/
 	unsigned int y;
 #pragma omp parallel for \
         shared(out), private(y)
@@ -1131,19 +1031,6 @@ bool Kfusion::preprocessing(const ushort * inputDepth, const uint2 inputSize) {
 
 	mm2metersKernel(floatDepth, computationSize, inputDepth, inputSize);
 	bilateralFilterKernel(ScaledDepth[0], floatDepth, computationSize, gaussian, e_delta, radius);
-#if 0
-	float avgBilIn = 0, avgBilOut = 0;
-	for(size_t i = 0; i < computationSize.x * computationSize.y; i++)
-	{
-		avgBilIn += floatDepth[i];
-	}
-	for(size_t i = 0; i < computationSize.x * computationSize.y; i++)
-	{
-		avgBilOut += ScaledDepth[0][i];
-	}
-	debug(avgBilIn);
-	debug(avgBilOut);
-#endif
 	return true;
 #endif
 }
@@ -1160,12 +1047,10 @@ static void show(TrackData &data)
 	debug(data.J[5]);
 }
 
-//#define checkPose(mat, label)
 bool Kfusion::tracking(float4 k, float icp_threshold, uint tracking_rate,
 		uint frame) {
 #if ENABLE_KFUSION
 
-	// TODO: How to do that with Drake?
 	if (frame % tracking_rate != 0)
 		return false;
 
@@ -1176,18 +1061,6 @@ bool Kfusion::tracking(float4 k, float icp_threshold, uint tracking_rate,
 	{
 		totalDepth += ScaledDepth[0][j];
 	}
-	/*
-	running_halfSample++;
-#define halfSample_condition ((running_halfSample == 22) || (running_halfSample == 27))
-	if(halfSample_condition)
-	{
-		debug(running_halfSample);
-		debug(frame);
-		debug(0);
-		debug(totalDepth);
-		debug("----------------------");
-	}
-	*/
 	
 	for (unsigned int i = 1; i < iterations.size(); ++i) {
 		float avgHalfIn = 0, avgHalfOut = 0;
@@ -1198,108 +1071,24 @@ bool Kfusion::tracking(float4 k, float icp_threshold, uint tracking_rate,
 		{
 			totalDepth += ScaledDepth[i][j];
 		}
-		/*
-		running_halfSample++;
-		if(halfSample_condition)
-		{
-			debug(running_halfSample);
-			//debug(iterations.size() - 1 - i);
-			debug(frame);
-			debug(i);
-			debug(totalDepth);
-			debug("----------------------");
-		}
-		*/
 	}
 
 	// prepare the 3D information from the input depth maps
 	uint2 localimagesize = computationSize;
-	// TODO: restore
 	for (unsigned int i = 0; i < iterations.size(); ++i)
-	// This is only to compare variables to drake implementation
-	//for (int i = iterations.size() - 1; i >= 0; --i) 
 	{
-		// This is only to compare variables to drake implementation
-#define INVERT_PREPROCESSING 0
-#if INVERT_PREPROCESSING
-		localimagesize = make_uint2(computationSize.x / (int)pow(2, iterations.size() - 1 - i), computationSize.y / (int)pow(2, iterations.size() - 1 - i));
-#endif
-#define DEBUG_VERTEX2NORMAL 0
-#if INVERT_PREPROCESSING
-		unsigned int ii = iterations.size() - 1 - i;
-#else
 		unsigned int ii = i;
-#endif
 		Matrix4 invK = getInverseCameraMatrix(k / float(1 << ii));
 		static int running_depth2vertex = 0;
 		running_depth2vertex++;
 		depth2vertexKernel(inputVertex[ii], ScaledDepth[ii], localimagesize, invK);
 		vertex2normalKernel(inputNormal[ii], inputVertex[ii], localimagesize);
-#if DEBUG_VERTEX2NORMAL || DEBUG_DEPTH2VERTEX
-		float vertexTotal = 0, inputTotal = 0;
-		for(size_t j = 0; j < localimagesize.x * localimagesize.y; j++)
-		{
-			inputTotal += ScaledDepth[ii][j];
-			vertexTotal += inputVertex[ii][j].x;
-			vertexTotal += inputVertex[ii][j].y;
-			vertexTotal += inputVertex[ii][j].z;
-		}
-		if(running_depth2vertex == 24 || running_depth2vertex == 25 || 0)
-		{
-			debug(running_depth2vertex);
-			debug(ii);
-			debug(frame);
-			debug(inputTotal);
-			debug(vertexTotal);
-			debug(localimagesize.x);
-			debug(localimagesize.y);
-			debug("-------------------------------");
-		}
-#endif
-#if DEBUG_VERTEX2NORMAL || DEBUG_DEPTH2VERTEX
-#endif
-		// TODO: restore
-#if !INVERT_PREPROCESSING
 		localimagesize = make_uint2(localimagesize.x / 2, localimagesize.y / 2);
-#endif
 	}
 
 	oldPose = pose;
-	//checkPose(raycastPose, raycastPoseTotal);
-	//checkPose(pose, poseTotal);
 	const Matrix4 projectReference = getCameraMatrix(k) * inverse(raycastPose);
-#if 0
-	float projectReferenceTotal;
-	const Matrix4 &ref = projectReference;
-	for(size_t i = 0; i < 4; i++)
-	{
-		/*
-		debug(4 * i);
-		debug(raycastPose.data[i].x);
-		debug(projectReference.data[i].x);
-		debug(4 * i + 1);
-		debug(raycastPose.data[i].y);
-		debug(projectReference.data[i].y);
-		debug(4 * i + 2);
-		debug(raycastPose.data[i].z);
-		debug(projectReference.data[i].z);
-		debug(4 * i + 3);
-		debug(raycastPose.data[i].w);
-		debug(projectReference.data[i].w);
-		*/
-		projectReferenceTotal += ref.data[i].x;
-		projectReferenceTotal += ref.data[i].y;
-		projectReferenceTotal += ref.data[i].z;
-		projectReferenceTotal += ref.data[i].w;
-	}
-	debug(projectReferenceTotal);
-#endif
 
-#define DEBUG_TRACKING 0
-#if DEBUG_TRACKING
-	float vertex_total = 0, normal_total = 0, tracking_total = 0, reduce_total = 0, ref_vertex_total = 0, ref_normal_total = 0, depth_total = 0;
-	float pose_total = 0, projectReference_total = 0;
-#endif
 	for (int level = iterations.size() - 1; level >= 0; --level) {
 		uint2 localimagesize = make_uint2(
 				computationSize.x / (int) pow(2, level),
@@ -1310,176 +1099,12 @@ bool Kfusion::tracking(float4 k, float icp_threshold, uint tracking_rate,
 				projectReference, dist_threshold, normal_threshold);
 
 			reduceKernel(reductionoutput, trackingResult, computationSize, localimagesize);
-#if DEBUG_TRACKING
-			static unsigned int track_running = 0;
-			track_running++;
-			vertex_total = 0;
-			normal_total = 0;
-			tracking_total = 0;
-			reduce_total = 0;
-			ref_vertex_total = 0;
-			ref_normal_total = 0;
-			pose_total = 0;
-			projectReference_total = 0;
-			for(size_t ii = 0; ii < 4; ii++)
-			{
-				pose_total += pose.data[ii].x;
-				pose_total += pose.data[ii].y;
-				pose_total += pose.data[ii].z;
-				pose_total += pose.data[ii].w;
-				projectReference_total += projectReference.data[ii].x;
-				projectReference_total += projectReference.data[ii].y;
-				projectReference_total += projectReference.data[ii].z;
-				projectReference_total += projectReference.data[ii].w;
-			}
-			for(size_t ii = 0; ii < localimagesize.x * localimagesize.y; ii++)
-			{
-				depth_total += ScaledDepth[level][ii];
-				vertex_total += inputVertex[level][ii].x;
-				vertex_total += inputVertex[level][ii].y;
-				vertex_total += inputVertex[level][ii].z;
 
-				normal_total += inputNormal[level][ii].x;
-				normal_total += inputNormal[level][ii].y;
-				normal_total += inputNormal[level][ii].z;
 
-				ref_vertex_total += vertex[ii].x;
-				ref_vertex_total += vertex[ii].y;
-				ref_vertex_total += vertex[ii].z;
-
-				ref_normal_total += normal[ii].x;
-				ref_normal_total += normal[ii].y;
-				ref_normal_total += normal[ii].z;
-			}
-			
-			size_t size = 0;
-			for(size_t ii = 0; ii < localimagesize.y; ii++)
-			{
-				for(size_t jj = 0; jj < localimagesize.x; jj++)
-				{
-					size++;
-					size_t index = jj + ii * computationSize.x;
-					tracking_total += trackingResult[index].result;
-					tracking_total += trackingResult[index].error;
-					tracking_total += trackingResult[index].J[0];
-					tracking_total += trackingResult[index].J[1];
-					tracking_total += trackingResult[index].J[2];
-					tracking_total += trackingResult[index].J[3];
-					tracking_total += trackingResult[index].J[4];
-					tracking_total += trackingResult[index].J[5];
-#if 0
-					if(trackingResult[index].result != -4)
-					{
-						debug(index);
-					}
-#endif
-#if 0
-					debug(trackingResult[ii].result);
-					debug(trackingResult[ii].error);
-					debug(trackingResult[ii].J[0]);
-					debug(trackingResult[ii].J[1]);
-					debug(trackingResult[ii].J[2]);
-					debug(trackingResult[ii].J[3]);
-					debug(trackingResult[ii].J[4]);
-					debug(trackingResult[ii].J[5]);
-#endif
-				}
-			}
-			for(size_t ii = 0; ii < 8 * 32; ii++)
-			{
-				reduce_total += reductionoutput[ii];
-			}
-#endif
-#if DEBUG_TRACKING
-#define pose_min (pose_total >= 9.184000015)
-#define pose_max (pose_total < 9.184000016)
-#define prt_max (projectReference_total <= -529.771240234)
-#define prt_min (projectReference_total > -529.771240235)
-			//int condition = localimagesize.x == 320 && localimagesize.y == 240 && pose_min && pose_max && prt_max && prt_min;
-			//int condition = localimagesize.x == 320 && localimagesize.y == 240; // && pose_min && pose_max && prt_max && prt_min;
-			int condition = ((track_running >= 12) && (track_running <= 12)) || 0;
-			//int condition = ((track_running >= 1) && (track_running <= 1)) || 0;
-			//if(condition)
-			{
-			debug(track_running);
-			debug(frame);
-			debug(level);
-			debug(localimagesize.x);
-			debug(localimagesize.y);
-			debug(computationSize.x);
-			debug(computationSize.y);
-			debug(dist_threshold);
-			debug(normal_threshold);
-			debug(pose_total);
-			debug(projectReference_total);
-			debug(depth_total);
-			debug(vertex_total);
-			debug(normal_total);
-			debug(ref_vertex_total);
-			debug(ref_normal_total);
-			debug(tracking_total);
-			debug(reduce_total);
-			}
-			//else
-			{
-				/*
-				debug(pose_total);
-				debug(projectReference_total);
-				debug(pose_min);
-				debug(pose_max);
-				debug(prt_max);
-				debug(prt_min);
-				debug("#####################");
-				*/
-			}
-#endif
-
-#define DEBUG_UPDATE 0
-#if DEBUG_TRACKING || DEBUG_UPDATE
-#if DEBUG_TRACKING
-			if(condition)
-			{
-#endif
-				checkPose(pose, poseTotal);
-#if DEBUG_TRACKING
-			}
-#endif
-#endif
-
-#if DEBUG_UPDATE
-			float reductionTotal = 0;
-			for(int ii = 0; ii < 8 * 32; ii++)
-			{
-				reductionTotal += reductionoutput[ii];
-			}
-			debug(reductionTotal);
-#endif
 			if (updatePoseKernel(pose, reductionoutput, icp_threshold))
 			{
-#if DEBUG_TRACKING || DEBUG_UPDATE
-#if DEBUG_TRACKING
-			if(condition)
-			{
-#endif
-				checkPose(pose, poseTotal);
-				debug("####################################");
-#if DEBUG_TRACKING
-			}
-#endif
-#endif
 				break;
 			}
-#if DEBUG_TRACKING || DEBUG_UPDATE
-#if DEBUG_TRACKING
-			if(condition)
-			{
-#endif
-				checkPose(pose, poseTotal);
-				debug("####################################");
-#if DEBUG_TRACKING
-			}
-#endif
-#endif
 		}
 	}
 
@@ -1495,50 +1120,11 @@ bool Kfusion::raycasting(float4 k, float mu, uint frame) {
 	bool doRaycast = false;
 
 	if (frame > 2) {
-#define DEBUG_RAYCAST 1
-#if DEBUG_RAYCAST
-		//debug("Going for raycast");
-		static int Running_Raycast = 0;
-		Running_Raycast++;
-#endif
-
 		raycastPose = pose;
 		Matrix4 view = raycastPose * getInverseCameraMatrix(k);
 		raycastKernel(vertex, normal, computationSize, volume, view, nearPlane, farPlane, step, 0.75f * mu);
 		size_t i;
 		float vertexTotal = 0, normalTotal = 0;
-#if DEBUG_RAYCAST
-		for(i = 0; i < computationSize.x * computationSize.y / 256; i++)
-		{
-			vertexTotal += vertex[i].x;
-			vertexTotal += vertex[i].y;
-			vertexTotal += vertex[i].z;
-			normalTotal += normal[i].x;
-			normalTotal += normal[i].y;
-			normalTotal += normal[i].z;
-		}
-		float totalView = 0;
-		for(size_t i = 0; i < 4; i++)
-		{
-			totalView += view.data[i].x;
-			totalView += view.data[i].y;
-			totalView += view.data[i].z;
-			totalView += view.data[i].w;
-		}
-		if(Running_Raycast == 1)
-		{
-		debug(Running_Raycast);
-		debug(totalView);
-		debug(nearPlane);
-		debug(farPlane);
-		debug(step)
-		debug(mu);
-		debug(computationSize.x);
-		debug(computationSize.y);
-		debug(vertexTotal);
-		debug(normalTotal);
-		}
-#endif
 	}
 
 	return doRaycast;
@@ -1548,100 +1134,12 @@ bool Kfusion::raycasting(float4 k, float mu, uint frame) {
 bool Kfusion::integration(float4 k, uint integration_rate, float mu,
 		uint frame) {
 #if ENABLE_KFUSION
-#define DEBUG_CHECK 0
-#if DEBUG_CHECK
-	float poseTotal = 0, oldPoseTotal = 0, reductionoutputTotal = 0;
-	for(int i = 0; i < 4; i++)
-	{
-		poseTotal += pose.data[i].x;
-		poseTotal += pose.data[i].y;
-		poseTotal += pose.data[i].z;
-		poseTotal += pose.data[i].w;
-		oldPoseTotal += oldPose.data[i].x;
-		oldPoseTotal += oldPose.data[i].y;
-		oldPoseTotal += oldPose.data[i].z;
-		oldPoseTotal += oldPose.data[i].w;
-	}
-	debug(poseTotal);
-	debug(oldPoseTotal);
-	for(int i = 0; i < 8 * 32; i++)
-	{
-		reductionoutputTotal += reductionoutput[i];
-	}
-	debug(reductionoutputTotal);
-	debug(computationSize.x);
-	debug(computationSize.y);
-	debug(track_threshold);
-#endif
 	bool doIntegrate = checkPoseKernel(pose, oldPose, reductionoutput,
 			computationSize, track_threshold);
 
-	//debug(doIntegrate);
-	//debug(((frame % integration_rate) == 0));
 	if ((doIntegrate && ((frame % integration_rate) == 0)) || (frame <= 3)) {
-#if 0
-	debug(computationSize.x);
-	debug(computationSize.y);
-	float volumePreTotal = 0;
-	for(uint x = 0; x < volume.size.x; x++)
-	{
-		for(uint y = 0; y < volume.size.y; y++)
-		{
-			for(uint z = 0; z < volume.size.z; z++)
-			{
-				volumePreTotal += volume[make_uint3(x, y, z)].x;
-				volumePreTotal += volume[make_uint3(x, y, z)].y;
-			}
-		}
-	}
-	debug(volumePreTotal);
-	float depthTotal = 0;
-	for(size_t ii = 0; ii < computationSize.x * computationSize.y; ii++)
-	{
-		depthTotal += floatDepth[ii];
-	}
-	debug(depthTotal);
-	float viewTotal = 0, cameraTotal = 0, init_cameraTotal = 0;
-	Matrix4 view = inverse(pose);
-	Matrix4 camera = getCameraMatrix(k);
-	init_cameraTotal += k.x;
-	init_cameraTotal += k.y;
-	init_cameraTotal += k.z;
-	init_cameraTotal += k.w;
-	for(size_t ii = 0; ii < 4; ii++)
-	{
-		viewTotal += view.data[ii].x;
-		viewTotal += view.data[ii].y;
-		viewTotal += view.data[ii].z;
-		viewTotal += view.data[ii].w;
-		cameraTotal += camera.data[ii].x;
-		cameraTotal += camera.data[ii].y;
-		cameraTotal += camera.data[ii].z;
-		cameraTotal += camera.data[ii].w;
-	}
-	debug(viewTotal);
-	debug(init_cameraTotal);
-	debug(cameraTotal);
-	debug(mu);
-	debug(maxweight);
-#endif
 	integrateKernel(volume, floatDepth, computationSize, inverse(pose), getCameraMatrix(k), mu, maxweight);
 #define DEBUG_INTEGRATION 0
-#if DEBUG_INTEGRATION
-	float volumePostTotal = 0;
-	for(uint x = 0; x < volume.size.x; x++)
-	{
-		for(uint y = 0; y < volume.size.y; y++)
-		{
-			for(uint z = 0; z < volume.size.z; z++)
-			{
-				volumePostTotal += volume[make_uint3(x, y, z)].x;
-				volumePostTotal += volume[make_uint3(x, y, z)].y;
-			}
-		}
-	}
-	debug(volumePostTotal);
-#endif
 		doIntegrate = true;
 	} else {
 		doIntegrate = false;

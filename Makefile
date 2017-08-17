@@ -111,32 +111,6 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named kfusion-qt-drake
-
-# Build rule for target.
-kfusion-qt-drake: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 kfusion-qt-drake
-.PHONY : kfusion-qt-drake
-
-# fast build rule for target.
-kfusion-qt-drake/fast:
-	$(MAKE) -f kfusion/CMakeFiles/kfusion-qt-drake.dir/build.make kfusion/CMakeFiles/kfusion-qt-drake.dir/build
-.PHONY : kfusion-qt-drake/fast
-
-#=============================================================================
-# Target rules for targets named kfusion-main-drake
-
-# Build rule for target.
-kfusion-main-drake: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 kfusion-main-drake
-.PHONY : kfusion-main-drake
-
-# fast build rule for target.
-kfusion-main-drake/fast:
-	$(MAKE) -f kfusion/CMakeFiles/kfusion-main-drake.dir/build.make kfusion/CMakeFiles/kfusion-main-drake.dir/build
-.PHONY : kfusion-main-drake/fast
-
-#=============================================================================
 # Target rules for targets named kfusion-drake
 
 # Build rule for target.
@@ -148,19 +122,6 @@ kfusion-drake: cmake_check_build_system
 kfusion-drake/fast:
 	$(MAKE) -f kfusion/CMakeFiles/kfusion-drake.dir/build.make kfusion/CMakeFiles/kfusion-drake.dir/build
 .PHONY : kfusion-drake/fast
-
-#=============================================================================
-# Target rules for targets named kfusion-qt-opencl
-
-# Build rule for target.
-kfusion-qt-opencl: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 kfusion-qt-opencl
-.PHONY : kfusion-qt-opencl
-
-# fast build rule for target.
-kfusion-qt-opencl/fast:
-	$(MAKE) -f kfusion/CMakeFiles/kfusion-qt-opencl.dir/build.make kfusion/CMakeFiles/kfusion-qt-opencl.dir/build
-.PHONY : kfusion-qt-opencl/fast
 
 #=============================================================================
 # Target rules for targets named kfusion-benchmark-drake
@@ -176,147 +137,17 @@ kfusion-benchmark-drake/fast:
 .PHONY : kfusion-benchmark-drake/fast
 
 #=============================================================================
-# Target rules for targets named kfusion-main-opencl
+# Target rules for targets named kfusion-qt-drake
 
 # Build rule for target.
-kfusion-main-opencl: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 kfusion-main-opencl
-.PHONY : kfusion-main-opencl
+kfusion-qt-drake: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 kfusion-qt-drake
+.PHONY : kfusion-qt-drake
 
 # fast build rule for target.
-kfusion-main-opencl/fast:
-	$(MAKE) -f kfusion/CMakeFiles/kfusion-main-opencl.dir/build.make kfusion/CMakeFiles/kfusion-main-opencl.dir/build
-.PHONY : kfusion-main-opencl/fast
-
-#=============================================================================
-# Target rules for targets named kfusion-main-cpp
-
-# Build rule for target.
-kfusion-main-cpp: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 kfusion-main-cpp
-.PHONY : kfusion-main-cpp
-
-# fast build rule for target.
-kfusion-main-cpp/fast:
-	$(MAKE) -f kfusion/CMakeFiles/kfusion-main-cpp.dir/build.make kfusion/CMakeFiles/kfusion-main-cpp.dir/build
-.PHONY : kfusion-main-cpp/fast
-
-#=============================================================================
-# Target rules for targets named kfusion-qt-cpp
-
-# Build rule for target.
-kfusion-qt-cpp: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 kfusion-qt-cpp
-.PHONY : kfusion-qt-cpp
-
-# fast build rule for target.
-kfusion-qt-cpp/fast:
-	$(MAKE) -f kfusion/CMakeFiles/kfusion-qt-cpp.dir/build.make kfusion/CMakeFiles/kfusion-qt-cpp.dir/build
-.PHONY : kfusion-qt-cpp/fast
-
-#=============================================================================
-# Target rules for targets named kfusion-cpp
-
-# Build rule for target.
-kfusion-cpp: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 kfusion-cpp
-.PHONY : kfusion-cpp
-
-# fast build rule for target.
-kfusion-cpp/fast:
-	$(MAKE) -f kfusion/CMakeFiles/kfusion-cpp.dir/build.make kfusion/CMakeFiles/kfusion-cpp.dir/build
-.PHONY : kfusion-cpp/fast
-
-#=============================================================================
-# Target rules for targets named kfusion-openmp
-
-# Build rule for target.
-kfusion-openmp: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 kfusion-openmp
-.PHONY : kfusion-openmp
-
-# fast build rule for target.
-kfusion-openmp/fast:
-	$(MAKE) -f kfusion/CMakeFiles/kfusion-openmp.dir/build.make kfusion/CMakeFiles/kfusion-openmp.dir/build
-.PHONY : kfusion-openmp/fast
-
-#=============================================================================
-# Target rules for targets named kfusion-benchmark-openmp
-
-# Build rule for target.
-kfusion-benchmark-openmp: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 kfusion-benchmark-openmp
-.PHONY : kfusion-benchmark-openmp
-
-# fast build rule for target.
-kfusion-benchmark-openmp/fast:
-	$(MAKE) -f kfusion/CMakeFiles/kfusion-benchmark-openmp.dir/build.make kfusion/CMakeFiles/kfusion-benchmark-openmp.dir/build
-.PHONY : kfusion-benchmark-openmp/fast
-
-#=============================================================================
-# Target rules for targets named kfusion-benchmark-cpp
-
-# Build rule for target.
-kfusion-benchmark-cpp: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 kfusion-benchmark-cpp
-.PHONY : kfusion-benchmark-cpp
-
-# fast build rule for target.
-kfusion-benchmark-cpp/fast:
-	$(MAKE) -f kfusion/CMakeFiles/kfusion-benchmark-cpp.dir/build.make kfusion/CMakeFiles/kfusion-benchmark-cpp.dir/build
-.PHONY : kfusion-benchmark-cpp/fast
-
-#=============================================================================
-# Target rules for targets named kfusion-opencl
-
-# Build rule for target.
-kfusion-opencl: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 kfusion-opencl
-.PHONY : kfusion-opencl
-
-# fast build rule for target.
-kfusion-opencl/fast:
-	$(MAKE) -f kfusion/CMakeFiles/kfusion-opencl.dir/build.make kfusion/CMakeFiles/kfusion-opencl.dir/build
-.PHONY : kfusion-opencl/fast
-
-#=============================================================================
-# Target rules for targets named kfusion-qt-openmp
-
-# Build rule for target.
-kfusion-qt-openmp: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 kfusion-qt-openmp
-.PHONY : kfusion-qt-openmp
-
-# fast build rule for target.
-kfusion-qt-openmp/fast:
-	$(MAKE) -f kfusion/CMakeFiles/kfusion-qt-openmp.dir/build.make kfusion/CMakeFiles/kfusion-qt-openmp.dir/build
-.PHONY : kfusion-qt-openmp/fast
-
-#=============================================================================
-# Target rules for targets named kfusion-main-openmp
-
-# Build rule for target.
-kfusion-main-openmp: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 kfusion-main-openmp
-.PHONY : kfusion-main-openmp
-
-# fast build rule for target.
-kfusion-main-openmp/fast:
-	$(MAKE) -f kfusion/CMakeFiles/kfusion-main-openmp.dir/build.make kfusion/CMakeFiles/kfusion-main-openmp.dir/build
-.PHONY : kfusion-main-openmp/fast
-
-#=============================================================================
-# Target rules for targets named kfusion-benchmark-opencl
-
-# Build rule for target.
-kfusion-benchmark-opencl: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 kfusion-benchmark-opencl
-.PHONY : kfusion-benchmark-opencl
-
-# fast build rule for target.
-kfusion-benchmark-opencl/fast:
-	$(MAKE) -f kfusion/CMakeFiles/kfusion-benchmark-opencl.dir/build.make kfusion/CMakeFiles/kfusion-benchmark-opencl.dir/build
-.PHONY : kfusion-benchmark-opencl/fast
+kfusion-qt-drake/fast:
+	$(MAKE) -f kfusion/CMakeFiles/kfusion-qt-drake.dir/build.make kfusion/CMakeFiles/kfusion-qt-drake.dir/build
+.PHONY : kfusion-qt-drake/fast
 
 #=============================================================================
 # Target rules for targets named kfusion-qt-drake_automoc
@@ -332,45 +163,6 @@ kfusion-qt-drake_automoc/fast:
 .PHONY : kfusion-qt-drake_automoc/fast
 
 #=============================================================================
-# Target rules for targets named kfusion-qt-opencl_automoc
-
-# Build rule for target.
-kfusion-qt-opencl_automoc: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 kfusion-qt-opencl_automoc
-.PHONY : kfusion-qt-opencl_automoc
-
-# fast build rule for target.
-kfusion-qt-opencl_automoc/fast:
-	$(MAKE) -f kfusion/CMakeFiles/kfusion-qt-opencl_automoc.dir/build.make kfusion/CMakeFiles/kfusion-qt-opencl_automoc.dir/build
-.PHONY : kfusion-qt-opencl_automoc/fast
-
-#=============================================================================
-# Target rules for targets named kfusion-qt-cpp_automoc
-
-# Build rule for target.
-kfusion-qt-cpp_automoc: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 kfusion-qt-cpp_automoc
-.PHONY : kfusion-qt-cpp_automoc
-
-# fast build rule for target.
-kfusion-qt-cpp_automoc/fast:
-	$(MAKE) -f kfusion/CMakeFiles/kfusion-qt-cpp_automoc.dir/build.make kfusion/CMakeFiles/kfusion-qt-cpp_automoc.dir/build
-.PHONY : kfusion-qt-cpp_automoc/fast
-
-#=============================================================================
-# Target rules for targets named kfusion-qt-openmp_automoc
-
-# Build rule for target.
-kfusion-qt-openmp_automoc: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 kfusion-qt-openmp_automoc
-.PHONY : kfusion-qt-openmp_automoc
-
-# fast build rule for target.
-kfusion-qt-openmp_automoc/fast:
-	$(MAKE) -f kfusion/CMakeFiles/kfusion-qt-openmp_automoc.dir/build.make kfusion/CMakeFiles/kfusion-qt-openmp_automoc.dir/build
-.PHONY : kfusion-qt-openmp_automoc/fast
-
-#=============================================================================
 # Target rules for targets named oclwrapper
 
 # Build rule for target.
@@ -382,19 +174,6 @@ oclwrapper: cmake_check_build_system
 oclwrapper/fast:
 	$(MAKE) -f kfusion/thirdparty/CMakeFiles/oclwrapper.dir/build.make kfusion/thirdparty/CMakeFiles/oclwrapper.dir/build
 .PHONY : oclwrapper/fast
-
-#=============================================================================
-# Target rules for targets named oni2raw
-
-# Build rule for target.
-oni2raw: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 oni2raw
-.PHONY : oni2raw
-
-# fast build rule for target.
-oni2raw/fast:
-	$(MAKE) -f kfusion/thirdparty/CMakeFiles/oni2raw.dir/build.make kfusion/thirdparty/CMakeFiles/oni2raw.dir/build
-.PHONY : oni2raw/fast
 
 #=============================================================================
 # Target rules for targets named lodepng
@@ -430,28 +209,11 @@ help:
 	@echo "... depend"
 	@echo "... rebuild_cache"
 	@echo "... edit_cache"
-	@echo "... kfusion-qt-drake"
-	@echo "... kfusion-main-drake"
 	@echo "... kfusion-drake"
-	@echo "... kfusion-qt-opencl"
 	@echo "... kfusion-benchmark-drake"
-	@echo "... kfusion-main-opencl"
-	@echo "... kfusion-main-cpp"
-	@echo "... kfusion-qt-cpp"
-	@echo "... kfusion-cpp"
-	@echo "... kfusion-openmp"
-	@echo "... kfusion-benchmark-openmp"
-	@echo "... kfusion-benchmark-cpp"
-	@echo "... kfusion-opencl"
-	@echo "... kfusion-qt-openmp"
-	@echo "... kfusion-main-openmp"
-	@echo "... kfusion-benchmark-opencl"
+	@echo "... kfusion-qt-drake"
 	@echo "... kfusion-qt-drake_automoc"
-	@echo "... kfusion-qt-opencl_automoc"
-	@echo "... kfusion-qt-cpp_automoc"
-	@echo "... kfusion-qt-openmp_automoc"
 	@echo "... oclwrapper"
-	@echo "... oni2raw"
 	@echo "... lodepng"
 	@echo "... scene2raw"
 .PHONY : help

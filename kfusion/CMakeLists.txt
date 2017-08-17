@@ -34,9 +34,8 @@ endif(APPLE)
 
 set(common_compile_flags "")
 
-set(BUILD_EVERYTHING TRUE)
+set(BUILD_EVERYTHING FALSE)
 
-if(BUILD_EVERYTHING)
  # ----------------- CPP VERSION ----------------- 
 
 add_library(${appname}-cpp src/cpp/kernels.cpp)
@@ -44,6 +43,7 @@ target_link_libraries(${appname}-cpp ${common_libraries} ${OPENNI2_LIBRARIES})
 set(${appname}_cpp_rpath ${OPENNI2_LIB_PATH}:$ENV{LD_RUN_PATH})
 add_version(${appname} cpp "" "")
 
+if(BUILD_EVERYTHING)
  # ----------------- OPENMP VERSION ----------------- 
 
 add_library(${appname}-openmp  src/cpp/kernels.cpp)
