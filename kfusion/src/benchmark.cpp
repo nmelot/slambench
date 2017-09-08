@@ -114,10 +114,12 @@ int main(int argc, char ** argv) {
 	double timings[7];
 	timings[0] = tock();
 
+/*
 	*logstream
 			<< "frame\tacquisition\tpreprocessing\ttracking\tintegration\traycasting\trendering\tcomputation\ttotal    \tX          \tY          \tZ         \ttracked   \tintegrated"
 			<< std::endl;
 	logstream->setf(std::ios::fixed, std::ios::floatfield);
+*/
 
 	while (reader->readNextDepthFrame(inputDepth)) {
 		Matrix4 pose = kfusion.getPose();
@@ -152,6 +154,7 @@ int main(int argc, char ** argv) {
 
 		timings[6] = tock();
 
+	/*
 		*logstream << frame << "\t" << timings[1] - timings[0] << "\t" //  acquisition
 				<< timings[2] - timings[1] << "\t"     //  preprocessing
 				<< timings[3] - timings[2] << "\t"     //  tracking
@@ -163,6 +166,7 @@ int main(int argc, char ** argv) {
 				<< xt << "\t" << yt << "\t" << zt << "\t"     //  X,Y,Z
 				<< tracked << "        \t" << integrated // tracked and integrated flags
 				<< std::endl;
+	*/
 
 		frame++;
 
@@ -170,7 +174,7 @@ int main(int argc, char ** argv) {
 	}
 	
 	// ==========     DUMP VOLUME      =========
-
+	debug("Done");
 	if (config.dump_volume_file != "") {
 	  kfusion.dumpVolume(config.dump_volume_file.c_str());
 	}
