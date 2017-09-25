@@ -1094,7 +1094,7 @@ bool Kfusion::tracking(float4 k, float icp_threshold, uint tracking_rate,
 				computationSize.x / (int) pow(2, level),
 				computationSize.y / (int) pow(2, level));
 		for (int i = 0; i < iterations[level]; ++i) {
-			debug(i);
+			//debug(i);
 			trackKernel(trackingResult, inputVertex[level], inputNormal[level],
 				localimagesize, vertex, normal, computationSize, pose,
 				projectReference, dist_threshold, normal_threshold);
@@ -1104,13 +1104,13 @@ bool Kfusion::tracking(float4 k, float icp_threshold, uint tracking_rate,
 
 			if (updatePoseKernel(pose, reductionoutput, icp_threshold))
 			{
-				debug("Break!");
+				//debug("Break!");
 				break;
 			}
 		}
-		debug("-------");
+		//debug("-------");
 	}
-	debug("###############");
+	//debug("###############");
 
 	bool res = checkPoseKernel(pose, oldPose, reductionoutput, computationSize, track_threshold);
 	
