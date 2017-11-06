@@ -28,18 +28,18 @@ endif(CUDA_FOUND)
 if(APPLE)
     set(common_libraries     stdc++ pthread)
 else(APPLE)
-    set(common_libraries     rt stdc++ pthread ${DRAKE_LIBRARIES})
+    set(common_libraries     rt stdc++ pthread )
 endif(APPLE)
 
 
 set(common_compile_flags "")
 
-set(BUILD_EVERYTHING FALSE)
+set(BUILD_EVERYTHING TRUE)
 
  # ----------------- CPP VERSION ----------------- 
 
 add_library(${appname}-cpp src/cpp/kernels.cpp)
-target_link_libraries(${appname}-cpp ${common_libraries} ${OPENNI2_LIBRARIES})
+target_link_libraries(${appname}-cpp ${common_libraries} ${OPENNI2_LIBRARIES} ${DRAKE_LIBRARIES})
 set(${appname}_cpp_rpath ${OPENNI2_LIB_PATH}:$ENV{LD_RUN_PATH})
 add_version(${appname} cpp "" "")
 
@@ -47,7 +47,8 @@ if(BUILD_EVERYTHING)
  # ----------------- OPENMP VERSION ----------------- 
 
 add_library(${appname}-openmp  src/cpp/kernels.cpp)
-target_link_libraries(${appname}-openmp ${common_libraries} ${OPENNI2_LIBRARIES})
+target_link_libraries(${appname}-openmp ${common_libraries} ${OPENNI2_LIBRARIES} ${DRAKE_LIBRARIES})
+set(${appname}_openmp_rpath ${OPENNI2_LIB_PATH}:$ENV{LD_RUN_PATH})
 SET_TARGET_PROPERTIES(${appname}-openmp PROPERTIES COMPILE_FLAGS "-fopenmp")
 add_version(${appname} openmp "-fopenmp" "-fopenmp")
 

@@ -16,6 +16,7 @@
 #include <cstring>
 #include <time.h>
 #include <csignal>
+#include <rapl.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -114,13 +115,13 @@ int main(int argc, char ** argv) {
 	double timings[7];
 	timings[0] = tock();
 
-/*
 	*logstream
 			<< "frame\tacquisition\tpreprocessing\ttracking\tintegration\traycasting\trendering\tcomputation\ttotal    \tX          \tY          \tZ         \ttracked   \tintegrated"
 			<< std::endl;
 	logstream->setf(std::ios::fixed, std::ios::floatfield);
-*/
 
+	uint64_t start, stop;
+	//read_tsc(&start);
 	while (reader->readNextDepthFrame(inputDepth)) {
 		Matrix4 pose = kfusion.getPose();
 
@@ -170,6 +171,8 @@ int main(int argc, char ** argv) {
 
 		timings[0] = tock();
 	}
+	//read_tsc(&stop);
+	printf("Number of cycles: %lu\n", stop - start);
 	
 	// ==========     DUMP VOLUME      =========
 	//debug("Done");

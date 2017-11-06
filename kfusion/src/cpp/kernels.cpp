@@ -6,6 +6,7 @@
  This code is licensed under the MIT License.
 
  */
+#include <rapl.h>
 #include <kernels.h>
 
 #ifdef __APPLE__
@@ -159,12 +160,14 @@ void initVolumeKernel(Volume volume) {
 
 void bilateralFilterKernel(float* out, const float* in, uint2 size,
 		const float * gaussian, float e_d, int r) {
+						uint64_t start, stop;
+	uint64_t time = 0;
 #if ENABLE_KFUSION
 	TICK()
 		uint y;
 		float e_d_squared_2 = e_d * e_d * 2;
 #pragma omp parallel for \
-	    shared(out),private(y)   
+	    shared(out),private(y),num_threads(2)   
 		for (y = 0; y < size.y; y++) {
 			for (uint x = 0; x < size.x; x++) {
 				uint pos = x + y * size.x;
@@ -179,23 +182,31 @@ void bilateralFilterKernel(float* out, const float* in, uint2 size,
 				const float center = in[pos];
 
 				for (int i = -r; i <= r; ++i) {
+						//read_tsc(&start);
 					for (int j = -r; j <= r; ++j) {
 						uint2 curPos = make_uint2(clamp(x + i, 0u, size.x - 1),
 								clamp(y + j, 0u, size.y - 1));
 						const float curPix = in[curPos.x + curPos.y * size.x];
 						if (curPix > 0) {
 							const float mod = sq(curPix - center);
+#if 1
 							const float factor = gaussian[i + r]
 									* gaussian[j + r]
 									* expf(-mod / e_d_squared_2);
 							t += factor * curPix;
+#else
+							float factor = 1; // Perf debug purpose
+#endif
 							sum += factor;
 						}
 					}
+						//read_tsc(&stop);
+						time += stop - start;
 				}
 				out[pos] = t / sum;
 			}
 		}
+		//printf("if(curPix): %lu\n", time);
 		TOCK("bilateralFilterKernel", size.x * size.y);
 #endif
 }
@@ -1030,7 +1041,30 @@ bool Kfusion::preprocessing(const ushort * inputDepth, const uint2 inputSize) {
 #if ENABLE_KFUSION
 
 	mm2metersKernel(floatDepth, computationSize, inputDepth, inputSize);
+	uint64_t start, stop;
+	float floatDepthTotal = 0;
+	for(int i = 0; i < computationSize.x * computationSize.y; i++)
+	{
+		floatDepthTotal += floatDepth[i];
+	}
+	float gaussianTotal = 0;
+	for(int i = -radius; i <= radius; i++)
+	{
+		gaussianTotal += gaussian[i + radius];
+	}
+/*
+	debug(floatDepthTotal);
+	debug(computationSize.x);
+	debug(computationSize.y);
+	debug(gaussianTotal);
+	debug(e_delta);
+	debug(radius);
+*/
+	//read_tsc(&start);
+	
 	bilateralFilterKernel(ScaledDepth[0], floatDepth, computationSize, gaussian, e_delta, radius);
+	//read_tsc(&stop);
+	//printf("bilateral: %lu\n", stop - start);
 	return true;
 #endif
 }
