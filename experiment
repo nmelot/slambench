@@ -1,0 +1,25 @@
+#!/bin/bash
+
+TYPE=RELEASE
+variant="cpp openmp drake"
+
+#rm -rf $TYPE
+#rm kfusion/kfusion-*-{drake,cpp,openmp}
+export PATH=$HOME/.local/$(if [ "$TYPE" == "DEBUG" ]; then echo debug; else echo .;fi)/bin:$PATH
+#make -C ~/git/drake-kfusion/ install CONFIG=$TYPE
+
+mkdir -p $TYPE
+cd $TYPE
+#cmake .. -DCMAKE_BUILD_TYPE=$TYPE
+make VERBOSE=1
+cd ..
+
+for impl in $variant
+do
+	#LD_PRELOAD=~/.local/lib/librapl.so OMP_NUM_THREADS=2 $TYPE/kfusion/kfusion-benchmark-$impl -i ~/sandbox/slambench_datasets/living_room_traj2_loop.raw -s 4.8 -p 0.34,0.5,0.24 -z 4 -c 2 -r 1 -k 481.2,480,320,240 | tee ${impl}-perf.log
+	cat ${impl}-perf.log | cut -f 1,9 | tr '\t' ' ' | tr -s ' ' | tac | tail -n +3 | tac | tail +2 | sed 's/\s*$/ '$impl'/g' | tr ' ' , > ${impl}-stats.csv
+done
+
+./drawplots.r
+
+eog time_per_implementation.svg
