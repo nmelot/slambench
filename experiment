@@ -2,24 +2,54 @@
 
 TYPE=RELEASE
 variant="cpp openmp drake"
+max_width=4
 
-#rm -rf $TYPE
-#rm kfusion/kfusion-*-{drake,cpp,openmp}
 export PATH=$HOME/.local/$(if [ "$TYPE" == "DEBUG" ]; then echo debug; else echo .;fi)/bin:$PATH
-#make -C ~/git/drake-kfusion/ install CONFIG=$TYPE
 
 mkdir -p $TYPE
-cd $TYPE
-#cmake .. -DCMAKE_BUILD_TYPE=$TYPE
-make VERBOSE=1
-cd ..
 
 for impl in $variant
 do
-	#LD_PRELOAD=~/.local/lib/librapl.so OMP_NUM_THREADS=2 $TYPE/kfusion/kfusion-benchmark-$impl -i ~/sandbox/slambench_datasets/living_room_traj2_loop.raw -s 4.8 -p 0.34,0.5,0.24 -z 4 -c 2 -r 1 -k 481.2,480,320,240 | tee ${impl}-perf.log
-	cat ${impl}-perf.log | cut -f 1,9 | tr '\t' ' ' | tr -s ' ' | tac | tail -n +3 | tac | tail +2 | sed 's/\s*$/ '$impl'/g' | tr ' ' , > ${impl}-stats.csv
+	rm ${impl}-stats.csv
+
+	for width in `seq 1 $max_width`
+	do
+		echo impl = \"$impl\"
+		echo width = \"$width\"
+
+		## Do nothing for cpp with more than 1 core
+		if [ "$impl" == "cpp" ] && [ "$width" != "1" ]
+		then
+			continue
+		fi
+
+		## Rebuild binaries, only for drake variant
+		if [ "$impl" == "drake" ]
+		then
+			## Remove existing binaries
+			rm kfusion/kfusion-*-{drake,cpp,openmp}
+
+			## Rebuild drake application
+			make -C ~/git/drake-kfusion/ install CONFIG=$TYPE NUM_CORES=$width
+		
+			## Reconfigure kfusion
+			cmake .. -DCMAKE_BUILD_TYPE=$TYPE
+
+			## Rebuild kfusion
+			cd $TYPE
+			make VERBOSE=1
+			cd ..
+		fi
+
+		## Run variant		
+		LD_PRELOAD=~/.local/lib/librapl.so OMP_NUM_THREADS=$width $TYPE/kfusion/kfusion-benchmark-$impl -i ~/sandbox/slambench_datasets/living_room_traj2_loop.raw -s 4.8 -p 0.34,0.5,0.24 -z 4 -c 2 -r 1 -k 481.2,480,320,240 | tee ${impl}-${width}-perf.log
+
+		## Collect data
+		cat ${impl}-${width}-perf.log | cut -f 1,9-12 | tr '\t' ' ' | tr -s ' ' | tac | tail -n +3 | tac | tail +2 | sed 's/\s*$/ "'$impl'" '$width'/g' | tr ' ' , >> ${impl}-stats.csv
+	done
 done
 
+## Produce plots
 ./drawplots.r
 
-eog time_per_implementation.svg
+#eog time_per_implementation.svg

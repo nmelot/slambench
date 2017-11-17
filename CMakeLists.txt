@@ -11,8 +11,8 @@ ELSE()
 	SET(OPT_FLAGS "-O3")
 ENDIF()
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OPT_FLAGS} -std=gnu++11")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OPT_FLAGS} -std=gnu++11")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OPT_FLAGS} -std=gnu++11 -save-temps")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OPT_FLAGS} -std=gnu++11 -save-temps")
 
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O3      -Wall -Wno-unknown-pragmas -Wextra -Werror ")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3  -Wall -Wno-unknown-pragmas -Wextra -Werror ")
